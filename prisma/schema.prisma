@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model Pessoa {
+  id          String         @id @unique @default(uuid())
+  cpf         String         @unique @db.VarChar(11)
+  firstName   String
+  middleName  String
+  lastName    String
+  email       String?        @unique
+  password    String?
+  tel         String
+  endereco    EnderecoPessoa @relation(fields: [enderecoId], references: [id])
+  enderecoId  String
+  type        RolePessoa     @default(Vistoriador)
+  birthDate   DateTime
+  vinculo     Vinculo[]
+  aluga       Aluga[]
+  vistoriador Vistoria[]
+
+  @@index([enderecoId])
+}
+
+model EnderecoPessoa {
+  id          String   @id @unique @default(uuid())
+  rua         String
+  complemento String
+  numero      Int
+  bairro      String
+  cidade      String
+  estado      String
+  cep         String
+  pessoa      Pessoa[]
+
+  @@map(name: "Endereco") // Renomeia a tabela para "Endereco"
+}
+
+model Vinculo {
+  id             String @id @unique @default(uuid())
+  proprietario   Pessoa @relation(fields: [proprietarioId], references: [id])
+  imovel         Imovel @relation(fields: [imovelId], references: [id])
+  imovelId       String
+  proprietarioId String
+}
+
+model Imovel {
+  id          String     @id @unique @default(uuid())
+  icm         String     @unique @db.VarChar(20)
+  tipo        TipoImovel
+  rua         String
+  complemento String
+  numero      Int
+  bairro      String
+  cidade      String
+  estado      String
+  cep         String
+  vinculo     Vinculo[]
+  aluga       Aluga[]
+  comodo      Comodo[]
+  vistoria    Vistoria[]
+}
+
+model Aluga {
+  id          String    @id @unique @default(uuid())
+  inquilino   Pessoa    @relation(fields: [inquilinoId], references: [id])
+  imovel      Imovel    @relation(fields: [imovelId], references: [id])
+  imovelId    String
+  inquilinoId String
+  dataEntrada DateTime  @default(now())
+  dataSaida   DateTime?
+}
+
+model Comodo {
+  id         String       @id @unique @default(uuid())
+  imovel     Imovel       @relation(fields: [imovelId], references: [id])
+  imovelId   String
+  tipo       TipoComodo
+  numero     Int
+  componente Componente[]
+}
+
+model Componente {
+  id         String   @id @unique @default(uuid())
+  comodo     Comodo   @relation(fields: [comodoId], references: [id])
+  comodoId   String
+  vistoria   Vistoria @relation(fields: [vistoriaId], references: [id])
+  vistoriaId String
+  tipo       String
+  obs        String
+  cor        Cor
+  estado     Estado
+  material   Material
+}
+
+model ItemPrincipal {
+  id   String @id @unique @default(uuid())
+  name String @unique
+}
+
+model ItemAcessorio {
+  id   String @id @unique @default(uuid())
+  name String @unique
+}
+
+model Vistoria {
+  id            String       @id @unique @default(uuid())
+  vistoriador   Pessoa       @relation(fields: [vistoriadorId], references: [id])
+  tipo          TipoVistoria @default(Entrada)
+  vistoriadorId String
+  imovel        Imovel       @relation(fields: [imovelId], references: [id])
+  imovelId      String
+  data          DateTime     @default(now())
+  componente    Componente[]
+}
+
+enum TipoVistoria {
+  Entrada
+  Saida
+}
+
+enum RolePessoa {
+  Inquilino
+  Proprietario
+  Vistoriador
+  Adm
+  User
+}
+
+enum TipoImovel {
+  Casa
+  Apartamento
+  Terreno
+  Lote
+  Ponto
+  Rural
+}
+
+enum TipoComodo {
+  Sala
+  Corredor
+  BanheiroSocial
+  Banheiro
+  Quarto
+  Copa
+  Cozinha
+  Servico
+  BanheiroServico
+  Dispensa
+  Sacada
+  Outro
+}
+
+enum Cor {
+  Transparente
+  Incolor
+  Branco
+  BrancoGelo
+  RosaAcai
+  RosaAzaleia
+  Rubi
+  VermelhoCardinal
+  Vermelho
+  ColoradoVermelhoGoya
+  Pessego
+  Flamingo
+  LaranjaCitrico
+  LaranjaImperial
+  LaranjaMaracatu
+  LaranjaNeon
+  TerracotaSuave
+  Laranja
+  Ceramica
+  MarromConhaqueRoma
+  Areia
+  Creme
+  CromoSuave
+  OcreColonial
+  Ocre
+  MangabaGeada
+  Perola
+  Marfim
+  Palha
+  Vanilla
+  AmareloCanario
+  Sino
+  AmareloFrevo
+  AmareloDemarcacao
+  AmareloSeguranca
+  Amarelo
+  AmareloPadraoWandepoxy
+  Ouro
+  OuroCoral
+  AmareloTratorVerdeVale
+  VerdeVale
+  CapimLimao
+  Refresco
+  Verde
+  VerdeLimaoOrvalho
+  VerdePrimavera
+  Salvia
+  Mate
+  VerdeKiwi
+  VerdeAngra
+  VerdeNilo
+  VerdeClaro
+  VerdeTimbalada
+  VerdeQuadra
+  VerdeEscolar
+  VerdeFolha
+  VerdeEscuro
+  VerdeColonialVerdePiscina
+  Pavao
+  AzulPiscina
+  Oceanic
+  AzulPraia
+  AzulSereno
+  Marine
+  AzulArpoador
+  AzulDosAndes
+  Orquidea
+  Oceano
+  AzulMar
+  AzulSeguranca
+  LuaDoSertao
+  AzulProfundo
+  Azul
+  AzulFranca
+  AzulDelReyVioleta
+  LilasAreiaSirena
+  PedraPreciosa
+  CinzaAlpino
+  Prata
+  TubaraoBranco
+  Platina
+  CinzaMedio
+  CinzaPadraoWandepoxy
+  CinzaEscuro
+  CinzaPadraoFerrolack
+  PretoAlgodaoEgipcio
+  Cromio
+  BronzeLenda
+  Camurca
+  MadeiraAcinzentada
+  Concreto
+  Aluminio
+  Tabaco
+  VermelhoOxido
+  Marrom
+  Outro
+}
+
+enum Estado {
+  IP
+  IA
+  NP
+  NA
+  UP
+  UA
+}
+
+enum Material {
+  Madeira
+  Pintura
+  Alvenaria
+  Concreto
+  Aco
+  Vidro
+  Ceramica
+  Pedra
+  Gesso
+  PVC
+  Telha
+  Tinta
+  Carpete
+  Marmore
+  Granito
+  Laminado
+  Tijolo
+  Argamassa
+  TijolodeVidro
+  Ferro
+  Areia
+  Cimento
+  FerroForjado
+  Acrilico
+  Plastico
+  Metal
+  Bambu
+  FibradeVidro
+  PedraDecorativa
+  Drywall
+  PapeldeParede
+  PlacadeGesso
+  Asfalto
+  Palha
+  FolhasMetalicas
+  TelhadodeCeramica
+  TelhadodeMadeira
+  TelhadodeConcreto
+  Laje
+  PedraBritada
+  Outro
+}
