@@ -17,7 +17,7 @@ CREATE TYPE "Cor" AS ENUM ('Transparente', 'Incolor', 'Branco', 'BrancoGelo', 'R
 CREATE TYPE "Estado" AS ENUM ('IP', 'IA', 'NP', 'NA', 'UP', 'UA');
 
 -- CreateEnum
-CREATE TYPE "Material" AS ENUM ('Madeira', 'Alvenaria', 'Concreto', 'Aco', 'Vidro', 'Ceramica', 'Pedra', 'Gesso', 'PVC', 'Telha', 'Tinta', 'Carpete', 'Marmore', 'Granito', 'Laminado', 'Tijolo', 'Argamassa', 'TijolodeVidro', 'Ferro', 'Areia', 'Cimento', 'FerroForjado', 'Acrilico', 'Plastico', 'Metal', 'Bambu', 'FibradeVidro', 'PedraDecorativa', 'Drywall', 'PapeldeParede', 'PlacadeGesso', 'Asfalto', 'Palha', 'FolhasMetalicas', 'TelhadodeCeramica', 'TelhadodeMadeira', 'TelhadodeConcreto', 'Laje', 'PedraBritada', 'Outro');
+CREATE TYPE "Material" AS ENUM ('Madeira', 'Pintura', 'Alvenaria', 'Concreto', 'Aco', 'Vidro', 'Ceramica', 'Pedra', 'Gesso', 'PVC', 'Telha', 'Tinta', 'Carpete', 'Marmore', 'Granito', 'Laminado', 'Tijolo', 'Argamassa', 'TijolodeVidro', 'Ferro', 'Areia', 'Cimento', 'FerroForjado', 'Acrilico', 'Plastico', 'Metal', 'Bambu', 'FibradeVidro', 'PedraDecorativa', 'Drywall', 'PapeldeParede', 'PlacadeGesso', 'Asfalto', 'Palha', 'FolhasMetalicas', 'TelhadodeCeramica', 'TelhadodeMadeira', 'TelhadodeConcreto', 'Laje', 'PedraBritada', 'Outro');
 
 -- CreateTable
 CREATE TABLE "Pessoa" (
@@ -26,8 +26,8 @@ CREATE TABLE "Pessoa" (
     "firstName" TEXT NOT NULL,
     "middleName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
+    "email" TEXT,
+    "password" TEXT,
     "tel" TEXT NOT NULL,
     "enderecoId" TEXT NOT NULL,
     "type" "RolePessoa" NOT NULL DEFAULT 'Vistoriador',

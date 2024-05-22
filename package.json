@@ -8,10 +8,9 @@
   },
   "scripts": {
     "database": "prisma migrate dev ",
-    "vercel-build": "npx prisma migrate deploy && npx prisma generate",
+    "vercel-build": "npx prisma migrate dev && npx prisma generate",
     "prisma:generate": "prisma generate",
     "start": "ts-node-dev --exit-child --respawn --transpile-only --files src/app/index.ts",
-    "start:test": "ts-node-dev --exit-child --respawn --transpile-only --files src/app/index.ts",
     "test": "jest"
   },
   "keywords": [],
