@@ -28,55 +28,29 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
     return id;
   }
 };
-const upload = multer({ storage: multer.memoryStorage() });
 
-// Função para fazer upload de uma foto para o Google Drive
-const uploadToGoogleDrive = async (file: Express.Multer.File) => {
-  try {
-    const fileMetadata = {
-      name: file.originalname,
-    };
-
-    const media = {
-      mimeType: file.mimetype,
-      body: Buffer.from(file.buffer),
-    };
-
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: "id, webViewLink, webContentLink",
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error("Erro ao enviar foto para o Google Drive:", error);
-    throw error;
-  }
-};
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+});
 
 export const criarComponente = async (req: Request, res: Response) => {
   try {
-    const { vistoriaId, comodoId } = req.params; // Extrai os IDs da URL
-    const { tipo, obs, cor, estado, material } = req.body;
-    const files = req.files as Express.Multer.File[]; // Extrai os arquivos da solicitação
+    const { vistoriaId, comodoId } = req.params;
+    const { tipo, obs, cor, estado, material, fotos } = req.body;
 
-    console.log("Recebida solicitação:", req.method, req.url);
-    console.log("Corpo da solicitação:", req.body);
-    console.log("Arquivos recebidos:", files);
+    let fotosBase64: string[] = [];
 
-    // Gera um comodoId único
-    const id = uuidv4();
-
-    const fotos: string[] = [];
-
-    for (const file of files) {
-      const uploadedFile = await uploadToGoogleDrive(file);
-      const url = uploadedFile.webViewLink || uploadedFile.webContentLink;
-      if (url) {
-        fotos.push(url);
-      }
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      // Verifica se req.files é um array e se possui itens
+      fotosBase64 = (req.files as Express.Multer.File[]).map((file) => {
+        return `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      });
     }
+
+    const id = uuidv4();
 
     const componente = await prisma.componente.create({
       data: {
@@ -88,22 +62,13 @@ export const criarComponente = async (req: Request, res: Response) => {
         cor,
         estado,
         material,
-        fotos, // Passando apenas strings válidas
+        fotos: [...fotos, ...fotosBase64],
       },
     });
 
     return res.status(HttpStatus.Created).json(componente);
   } catch (error) {
     console.error("Erro ao criar Componente", error);
-
-    if (error instanceof ZodError) {
-      console.error("Erros de validação:", error.errors);
-      return res.status(HttpStatus.UnprocessableEntity).json({
-        mensagem: "Por favor, corrija os seguintes erros:",
-        errors: error.errors,
-      });
-    }
-
     return res
       .status(HttpStatus.InternalServerError)
       .json({ mensagem: "Erro interno do servidor" });
@@ -111,9 +76,6 @@ export const criarComponente = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
-
-// Middleware de upload
-export const uploadFotos = upload.array("fotos", 10); // Ajuste o limite conforme necessário
 
 export const obterUltimaVistoriaUsuario = async (
   req: Request,
