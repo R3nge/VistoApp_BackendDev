@@ -106,6 +106,7 @@ CREATE TABLE "Componente" (
     "cor" "Cor" NOT NULL,
     "estado" "Estado" NOT NULL,
     "material" "Material" NOT NULL,
+    "fotos" TEXT[],
 
     CONSTRAINT "Componente_pkey" PRIMARY KEY ("id")
 );

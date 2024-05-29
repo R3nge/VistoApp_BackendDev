@@ -1,10 +1,9 @@
-import { config } from "dotenv";
+// app.ts
 import express from "express";
 import cors from "cors";
 import { Client } from "pg";
 
 // Carregar variáveis de ambiente
-config();
 
 // Routers import
 import {
@@ -19,8 +18,9 @@ import {
   vistoriaRouter,
   itemRouter,
   componenteRouter,
-  exportaRouter,
 } from "../router";
+
+import exportaRouter from "../router/exportaRouter";
 
 const app = express();
 

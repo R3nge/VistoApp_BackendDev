@@ -97,6 +97,7 @@ model Componente {
   cor        Cor
   estado     Estado
   material   Material
+  fotos      String[] // Adicionado campo para URLs das fotos
 }
 
 model ItemPrincipal {

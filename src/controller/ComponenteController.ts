@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
+import multer from "multer";
+import { ZodError } from "zod"; // Importe ZodError se estiver usando Zod para validação
 import prisma from "../../database/prisma";
-import { ZodError } from "zod";
-import { v4 as uuidv4 } from "uuid";
+import { drive } from "./googleDriveConfig"; // Importe o cliente Google Drive
+import { v4 as uuidv4 } from "uuid"; // Importe a função uuid
 
 const HttpStatus = {
   Success: 200,
@@ -26,16 +28,55 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
     return id;
   }
 };
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Função para fazer upload de uma foto para o Google Drive
+const uploadToGoogleDrive = async (file: Express.Multer.File) => {
+  try {
+    const fileMetadata = {
+      name: file.originalname,
+    };
+
+    const media = {
+      mimeType: file.mimetype,
+      body: Buffer.from(file.buffer),
+    };
+
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      media: media,
+      fields: "id, webViewLink, webContentLink",
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao enviar foto para o Google Drive:", error);
+    throw error;
+  }
+};
 
 export const criarComponente = async (req: Request, res: Response) => {
   try {
     const { vistoriaId, comodoId } = req.params; // Extrai os IDs da URL
     const { tipo, obs, cor, estado, material } = req.body;
+    const files = req.files as Express.Multer.File[]; // Extrai os arquivos da solicitação
+
     console.log("Recebida solicitação:", req.method, req.url);
     console.log("Corpo da solicitação:", req.body);
+    console.log("Arquivos recebidos:", files);
 
     // Gera um comodoId único
-    const id = await gerarIdUnico("Componente");
+    const id = uuidv4();
+
+    const fotos: string[] = [];
+
+    for (const file of files) {
+      const uploadedFile = await uploadToGoogleDrive(file);
+      const url = uploadedFile.webViewLink || uploadedFile.webContentLink;
+      if (url) {
+        fotos.push(url);
+      }
+    }
 
     const componente = await prisma.componente.create({
       data: {
@@ -47,6 +88,7 @@ export const criarComponente = async (req: Request, res: Response) => {
         cor,
         estado,
         material,
+        fotos, // Passando apenas strings válidas
       },
     });
 
@@ -69,6 +111,9 @@ export const criarComponente = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
+
+// Middleware de upload
+export const uploadFotos = upload.array("fotos", 10); // Ajuste o limite conforme necessário
 
 export const obterUltimaVistoriaUsuario = async (
   req: Request,
@@ -160,7 +205,6 @@ export const atualizarComponente = async (req: Request, res: Response) => {
   }
 };
 
-
 export const buscarComponentesPorComodo = async (
   req: Request,
   res: Response
@@ -184,8 +228,6 @@ export const buscarComponentesPorComodo = async (
     await prisma.$disconnect();
   }
 };
-
-
 
 export const excluirComponente = async (req: Request, res: Response) => {
   try {

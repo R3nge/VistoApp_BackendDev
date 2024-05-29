@@ -211,17 +211,7 @@ export const criarPessoaComEndereco = async (req: Request, res: Response) => {
       endereco
     );
     // Verificações dos dados recebidos
-    if (
-      !cpf ||
-      !fullName ||
-      !tel ||
-      !confirmPassword ||
-      !password ||
-      !email ||
-      !birthDate ||
-      !type ||
-      !endereco
-    ) {
+    if (!cpf || !fullName || !tel || !birthDate || !type || !endereco) {
       const errorMessage = "Por favor, forneça todos os dados necessários.";
       console.error(errorMessage);
       return res.status(HttpStatus.RequisicaoInvalida).json({

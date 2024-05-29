@@ -9,10 +9,6 @@ exportaRouter.route("/Vistoria/GerarPDF/:id").get(async (req, res) => {
   exportaController.exportarVistoriaParaPDF(req, res);
 });
 
-exportaRouter.route("/Vistoria/GerarDOC/:id").get(async (req, res) => {
-  exportaController.exportarVistoriaParaDOCX(req, res);
-});
-
 // exportaRouter
 //   .route("/Vistoria/GerarPDFUltima")
 //   .get(async (req, res) => {
