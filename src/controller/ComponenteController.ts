@@ -32,19 +32,7 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
   }
 };
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
-
-const saveFile = async (file: Express.Multer.File, folder: string) => {
-  const fileName = `${uuidv4()}_${file.originalname}`;
-  const filePath = path.join(folder, fileName);
-  await fs.promises.writeFile(filePath, file.buffer);
-  return fileName;
-};
-
-export const uploadFotoComponente = async (
+const uploadFotoComponente = async (
   req: express.Request,
   res: express.Response
 ) => {
@@ -63,24 +51,13 @@ export const uploadFotoComponente = async (
         .json({ mensagem: "Nenhuma foto enviada" });
     }
 
-    const folder = path.resolve(
-      process.env.IMAGE_UPLOAD_PATH || "images/pictures/componentes"
-    );
-    if (!fs.existsSync(folder)) {
-      fs.mkdirSync(folder, { recursive: true });
-    }
+    // Convertendo a imagem em dados binários
+    const imagem = file.buffer;
 
-    const fileName = await saveFile(file, folder);
-    const fotoUrl = path.join(
-      process.env.IMAGE_UPLOAD_PATH || "images/pictures/componentes",
-      fileName
-    );
-
-    console.log("Foto salva em:", fotoUrl);
-
+    // Atualizando o componente no banco de dados
     const componente = await prisma.componente.update({
       where: { id: componenteId },
-      data: { fotos: fotoUrl },
+      data: { /* Removendo a propriedade 'imagem' */ },
     });
 
     console.log("Componente atualizado:", componente);
