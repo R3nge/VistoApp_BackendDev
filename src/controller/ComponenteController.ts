@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
 import multer from "multer";
-import { ZodError } from "zod"; // Importe ZodError se estiver usando Zod para validação
+import path from "path";
+import fs from "fs";
 import prisma from "../../database/prisma";
-import { drive } from "./googleDriveConfig"; // Importe o cliente Google Drive
-import { v4 as uuidv4 } from "uuid"; // Importe a função uuid
+import { v4 as uuidv4 } from "uuid";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const HttpStatus = {
   Success: 200,
@@ -31,24 +34,61 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024,
-  },
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
+
+const saveFile = async (file: Express.Multer.File, folder: string) => {
+  const fileName = `${uuidv4()}_${file.originalname}`;
+  const filePath = path.join(folder, fileName);
+  await fs.promises.writeFile(filePath, file.buffer);
+  return fileName;
+};
+
+export const uploadFotoComponente = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res
+        .status(HttpStatus.BadRequest)
+        .json({ mensagem: "Nenhuma foto enviada" });
+    }
+
+    // Use a variável de ambiente para o caminho da pasta de upload
+    const folder = path.resolve(
+      process.env.IMAGE_UPLOAD_PATH || "images/pictures/componentes"
+    );
+    if (!fs.existsSync(folder)) {
+      fs.mkdirSync(folder, { recursive: true });
+    }
+
+    const fileName = await saveFile(file, folder);
+    const fotoUrl = path.join(
+      process.env.IMAGE_UPLOAD_PATH || "images/pictures/componentes",
+      fileName
+    ); // URL relativa para acessar a foto
+
+    const componente = await prisma.componente.update({
+      where: { id },
+      data: { fotos: fotoUrl },
+    });
+
+    return res.status(HttpStatus.Success).json(componente);
+  } catch (error) {
+    console.error("Erro ao fazer upload de foto para Componente", error);
+    return res
+      .status(HttpStatus.InternalServerError)
+      .json({ mensagem: "Erro interno do servidor" });
+  } finally {
+    await prisma.$disconnect();
+  }
+};
 
 export const criarComponente = async (req: Request, res: Response) => {
   try {
     const { vistoriaId, comodoId } = req.params;
-    const { tipo, obs, cor, estado, material, fotos } = req.body;
-
-    let fotosBase64: string[] = [];
-
-    if (Array.isArray(req.files) && req.files.length > 0) {
-      // Verifica se req.files é um array e se possui itens
-      fotosBase64 = (req.files as Express.Multer.File[]).map((file) => {
-        return `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-      });
-    }
+    const { tipo, obs, cor, estado, material } = req.body;
 
     const id = uuidv4();
 
@@ -62,7 +102,6 @@ export const criarComponente = async (req: Request, res: Response) => {
         cor,
         estado,
         material,
-        fotos: [...fotos, ...fotosBase64],
       },
     });
 
@@ -233,6 +272,7 @@ const ComponenteController = {
   obterUltimaVistoriaUsuario,
   obterUltimoComodoUsuario,
   buscarComponentesPorComodo,
+  uploadFotoComponente,
 };
 
 export default ComponenteController;

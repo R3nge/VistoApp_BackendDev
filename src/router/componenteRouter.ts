@@ -1,8 +1,13 @@
-// componenteRouter.js
 import { Router } from "express";
 import { ComponenteController } from "../controller";
+import multer from "multer";
 
 const router = Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 router.post("/:vistoriaId/:comodoId/criarComponente", async (req, res) => {
   ComponenteController.criarComponente(req, res);
@@ -27,5 +32,14 @@ router.get("/obterUltimoComodoUsuario", async (req, res) => {
 router.get("/buscarComponentesPorComodo/:comodoId", async (req, res) => {
   ComponenteController.buscarComponentesPorComodo(req, res);
 });
+
+// Nova rota para upload de fotos
+router.post(
+  "/componentefoto/:componenteId",
+  upload.single("foto"),
+  async (req, res) => {
+    ComponenteController.uploadFotoComponente(req, res);
+  }
+);
 
 export default router;

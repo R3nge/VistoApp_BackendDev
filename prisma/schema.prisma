@@ -21,6 +21,7 @@ model Pessoa {
   enderecoId  String
   type        RolePessoa     @default(Vistoriador)
   birthDate   DateTime
+  fotos       String? // Adicionado campo para URLs das fotos
   vinculo     Vinculo[]
   aluga       Aluga[]
   vistoriador Vistoria[]
@@ -61,6 +62,7 @@ model Imovel {
   cidade      String
   estado      String
   cep         String
+  fotos       String? // Adicionado campo para URLs das fotos
   vinculo     Vinculo[]
   aluga       Aluga[]
   comodo      Comodo[]
@@ -83,6 +85,7 @@ model Comodo {
   imovelId   String
   tipo       TipoComodo
   numero     Int
+  fotos      String? // Adicionado campo para URLs das fotos
   componente Componente[]
 }
 
@@ -97,7 +100,7 @@ model Componente {
   cor        Cor
   estado     Estado
   material   Material
-  fotos      String[] // Adicionado campo para URLs das fotos
+  fotos      String? // Adicionado campo para URLs das fotos
 }
 
 model ItemPrincipal {
