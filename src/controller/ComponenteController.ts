@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import express, { Request, Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -44,18 +44,25 @@ const saveFile = async (file: Express.Multer.File, folder: string) => {
   return fileName;
 };
 
-export const uploadFotoComponente = async (req: Request, res: Response) => {
+export const uploadFotoComponente = async (
+  req: express.Request,
+  res: express.Response
+) => {
   try {
-    const { id } = req.params;
+    console.log("Recebendo upload de foto para componente");
+    const { componenteId } = req.params;
     const file = req.file;
 
+    console.log("ID do componente:", componenteId);
+    console.log("Arquivo recebido:", file);
+
     if (!file) {
+      console.log("Nenhuma foto enviada");
       return res
         .status(HttpStatus.BadRequest)
         .json({ mensagem: "Nenhuma foto enviada" });
     }
 
-    // Use a variável de ambiente para o caminho da pasta de upload
     const folder = path.resolve(
       process.env.IMAGE_UPLOAD_PATH || "images/pictures/componentes"
     );
@@ -67,12 +74,16 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
     const fotoUrl = path.join(
       process.env.IMAGE_UPLOAD_PATH || "images/pictures/componentes",
       fileName
-    ); // URL relativa para acessar a foto
+    );
+
+    console.log("Foto salva em:", fotoUrl);
 
     const componente = await prisma.componente.update({
-      where: { id },
+      where: { id: componenteId },
       data: { fotos: fotoUrl },
     });
+
+    console.log("Componente atualizado:", componente);
 
     return res.status(HttpStatus.Success).json(componente);
   } catch (error) {
@@ -84,7 +95,6 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
-
 export const criarComponente = async (req: Request, res: Response) => {
   try {
     const { vistoriaId, comodoId } = req.params;
