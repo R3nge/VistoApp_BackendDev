@@ -5,6 +5,7 @@ import fs from "fs";
 import prisma from "../../database/prisma";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
+import axios from "axios";
 
 dotenv.config();
 
@@ -51,27 +52,51 @@ const uploadFotoComponente = async (
         .json({ mensagem: "Nenhuma foto enviada" });
     }
 
-    // Convertendo a imagem em dados binários
-    const imagem = file.buffer;
+    const blob = new Blob([file.buffer], { type: file.mimetype });
 
-    // Atualizando o componente no banco de dados
-    const componente = await prisma.componente.update({
-      where: { id: componenteId },
-      data: { /* Removendo a propriedade 'imagem' */ },
-    });
+    // Configuração do upload para o ImgBB
+    const formData = new FormData();
+    formData.append("image", blob);
 
-    console.log("Componente atualizado:", componente);
+    // Fazendo o upload da imagem para o ImgBB
+    const response = await axios.post(
+      "https://api.imgbb.com/1/upload?key=be6ac2e610a029ea9d2814df6495ce49",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
-    return res.status(HttpStatus.Success).json(componente);
+    // Verificando se o upload foi bem-sucedido
+    if (response.data && response.data.data && response.data.data.url) {
+      const imageUrl = response.data.data.url;
+
+      // Atualizando o componente no banco de dados com o link da imagem
+      const componente = await prisma.componente.update({
+        where: { id: componenteId },
+        data: { fotos: imageUrl },
+      });
+
+      console.log("Componente atualizado:", componente);
+
+      // Retornar o link da imagem
+      return res.status(HttpStatus.Success).json({ imageUrl });
+    } else {
+      console.log("Erro ao fazer upload da imagem para o ImgBB");
+      return res
+        .status(HttpStatus.InternalServerError)
+        .json({ mensagem: "Erro ao fazer upload da imagem para o ImgBB" });
+    }
   } catch (error) {
     console.error("Erro ao fazer upload de foto para Componente", error);
     return res
       .status(HttpStatus.InternalServerError)
       .json({ mensagem: "Erro interno do servidor" });
-  } finally {
-    await prisma.$disconnect();
   }
 };
+
 export const criarComponente = async (req: Request, res: Response) => {
   try {
     const { vistoriaId, comodoId } = req.params;
