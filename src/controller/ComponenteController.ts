@@ -34,6 +34,7 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
   }
 };
 
+// Função para fazer upload da foto para o ImgBB e salvar a URL no banco de dados
 export const uploadFotoComponente = async (req: Request, res: Response) => {
   try {
     console.log("Recebendo upload de foto para componente");
@@ -43,7 +44,7 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
     console.log("ID do componente:", componenteId);
     console.log("URI da foto:", fotoURI);
 
-    // Enviar a foto para o serviço de hospedagem de imagens (por exemplo, o ImgBB)
+    // Criar um objeto FormData e anexar a foto
     const formData = new FormData();
     formData.append("image", fotoURI);
 
@@ -57,11 +58,11 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
       }
     );
 
-    // Verificando se o upload foi bem-sucedido
+    // Verificando se o upload foi bem-sucedido e atualizando o banco de dados com a URL da imagem
     if (response.data && response.data.data && response.data.data.url) {
       const imageUrl = response.data.data.url;
 
-      // Atualizando o componente no banco de dados com o link da imagem
+      // Atualizar o componente no banco de dados com a URL da imagem
       const componente = await prisma.componente.update({
         where: { id: componenteId },
         data: { fotos: imageUrl },
@@ -69,7 +70,7 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
 
       console.log("Componente atualizado:", componente);
 
-      // Retornar o link da imagem
+      // Retornar a URL da imagem
       return res.status(HttpStatus.Success).json({ imageUrl });
     } else {
       console.log("Erro ao fazer upload da imagem para o ImgBB");
