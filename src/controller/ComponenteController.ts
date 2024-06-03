@@ -39,12 +39,12 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
   try {
     console.log("Recebendo upload de foto para componente");
     const { componenteId } = req.params;
-    const { fotoURI } = req.body;
+    const fotoURI = req.body.fotoURI; // Extrair o URI da foto do corpo da requisição
 
     console.log("ID do componente:", componenteId);
     console.log("URI da foto:", fotoURI);
 
-    // Criar um objeto FormData e anexar a foto
+    // Criar um objeto FormData e anexar o URI da foto
     const formData = new FormData();
     formData.append("image", fotoURI);
 
