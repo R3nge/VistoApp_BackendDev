@@ -6,6 +6,7 @@ import prisma from "../../database/prisma";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import axios from "axios";
+import FormData from "form-data";
 
 dotenv.config();
 
@@ -33,38 +34,25 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
   }
 };
 
-export const uploadFotoComponente = async (
-  req: express.Request,
-  res: express.Response
-) => {
+export const uploadFotoComponente = async (req: Request, res: Response) => {
   try {
     console.log("Recebendo upload de foto para componente");
     const { componenteId } = req.params;
-    const file = req.file;
+    const { fotoURI } = req.body;
 
     console.log("ID do componente:", componenteId);
-    console.log("Arquivo recebido:", file);
+    console.log("URI da foto:", fotoURI);
 
-    if (!file) {
-      console.log("Nenhuma foto enviada");
-      return res
-        .status(HttpStatus.BadRequest)
-        .json({ mensagem: "Nenhuma foto enviada" });
-    }
-
-    const blob = new Blob([file.buffer], { type: file.mimetype });
-
-    // Configuração do upload para o ImgBB
+    // Enviar a foto para o serviço de hospedagem de imagens (por exemplo, o ImgBB)
     const formData = new FormData();
-    formData.append("image", blob);
+    formData.append("image", fotoURI);
 
-    // Fazendo o upload da imagem para o ImgBB
     const response = await axios.post(
       "https://api.imgbb.com/1/upload?key=be6ac2e610a029ea9d2814df6495ce49",
       formData,
       {
         headers: {
-          "Content-Type": "multipart/form-data",
+          ...formData.getHeaders(),
         },
       }
     );
