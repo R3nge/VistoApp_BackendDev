@@ -33,7 +33,7 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
   }
 };
 
-const uploadFotoComponente = async (
+export const uploadFotoComponente = async (
   req: express.Request,
   res: express.Response
 ) => {
