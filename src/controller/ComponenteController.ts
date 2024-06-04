@@ -45,15 +45,15 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
     console.log("URI da foto:", fotoURI);
 
     // Criar um objeto FormData e anexar o URI da foto
-    const formData = new FormData();
-    formData.append("image", fotoURI);
+    // const formData = new FormData();
+    // formData.append("image", fotoURI);
 
     const response = await axios.post(
       "https://api.imgbb.com/1/upload?key=be6ac2e610a029ea9d2814df6495ce49",
-      formData,
+      fotoURI,
       {
         headers: {
-          ...formData.getHeaders(),
+          "Content-Type": "multipart/form-data",
         },
       }
     );
