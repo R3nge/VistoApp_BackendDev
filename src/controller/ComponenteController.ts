@@ -39,53 +39,44 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
   try {
     console.log("Recebendo upload de foto para componente");
     const { componenteId } = req.params;
-    const fotoURI = req.body.fotoURI; // Extrair o URI da foto do corpo da requisição
 
-    console.log("ID do componente:", componenteId);
-    console.log("URI da foto:", fotoURI);
+    // Verifique se o arquivo foi recebido corretamente
+    if (!req.file) {
+      return res.status(400).json({ mensagem: "Arquivo não enviado" });
+    }
 
-    // Criar um objeto FormData e anexar o URI da foto
-    // const formData = new FormData();
-    // formData.append("image", fotoURI);
+    const formData = new FormData();
+    formData.append("image", req.file.buffer, req.file.originalname);
 
     const response = await axios.post(
       "https://api.imgbb.com/1/upload?key=be6ac2e610a029ea9d2814df6495ce49",
-      fotoURI,
+      formData,
       {
         headers: {
-          "Content-Type": "multipart/form-data",
+          ...formData.getHeaders(),
         },
       }
     );
 
-    // Verificando se o upload foi bem-sucedido e atualizando o banco de dados com a URL da imagem
     if (response.data && response.data.data && response.data.data.url) {
       const imageUrl = response.data.data.url;
 
-      // Atualizar o componente no banco de dados com a URL da imagem
       const componente = await prisma.componente.update({
         where: { id: componenteId },
         data: { fotos: imageUrl },
       });
 
       console.log("Componente atualizado:", componente);
-
-      // Retornar a URL da imagem
-      return res.status(HttpStatus.Success).json({ imageUrl });
+      return res.status(200).json({ imageUrl });
     } else {
       console.log("Erro ao fazer upload da imagem para o ImgBB");
-      return res
-        .status(HttpStatus.InternalServerError)
-        .json({ mensagem: "Erro ao fazer upload da imagem para o ImgBB" });
+      return res.status(500).json({ mensagem: "Erro ao fazer upload da imagem para o ImgBB" });
     }
   } catch (error) {
     console.error("Erro ao fazer upload de foto para Componente", error);
-    return res
-      .status(HttpStatus.InternalServerError)
-      .json({ mensagem: "Erro interno do servidor" });
+    return res.status(500).json({ mensagem: "Erro interno do servidor" });
   }
 };
-
 export const criarComponente = async (req: Request, res: Response) => {
   try {
     const { vistoriaId, comodoId } = req.params;

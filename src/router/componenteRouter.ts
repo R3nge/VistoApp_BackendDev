@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { ComponenteController } from "../controller";
 import multer from "multer";
+import { uploadFotoComponente } from "../controller/ComponenteController";
 
 const router = Router();
 
@@ -39,7 +40,7 @@ router.post(
   upload.single("file"),
   async (req, res) => {
     console.log("Rota /componentefoto/:componenteId chamada");
-    await ComponenteController.uploadFotoComponente(req, res);
+    await uploadFotoComponente(req, res);
   }
 );
 
