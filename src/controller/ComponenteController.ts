@@ -34,6 +34,8 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
   }
 };
 
+const upload = multer();
+
 // Função para fazer upload da foto para o ImgBB e salvar a URL no banco de dados
 export const uploadFotoComponente = async (req: Request, res: Response) => {
   try {
@@ -60,6 +62,7 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
     if (response.data && response.data.data && response.data.data.url) {
       const imageUrl = response.data.data.url;
 
+      // Atualize o componente com a URL da imagem, assumindo que você tenha um modelo de componente configurado
       const componente = await prisma.componente.update({
         where: { id: componenteId },
         data: { fotos: imageUrl },
