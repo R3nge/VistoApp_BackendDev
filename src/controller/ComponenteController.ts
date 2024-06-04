@@ -40,7 +40,6 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
     console.log("Recebendo upload de foto para componente");
     const { componenteId } = req.params;
 
-    // Verifique se o arquivo foi recebido corretamente
     if (!req.file) {
       return res.status(400).json({ mensagem: "Arquivo não enviado" });
     }
@@ -70,7 +69,9 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
       return res.status(200).json({ imageUrl });
     } else {
       console.log("Erro ao fazer upload da imagem para o ImgBB");
-      return res.status(500).json({ mensagem: "Erro ao fazer upload da imagem para o ImgBB" });
+      return res
+        .status(500)
+        .json({ mensagem: "Erro ao fazer upload da imagem para o ImgBB" });
     }
   } catch (error) {
     console.error("Erro ao fazer upload de foto para Componente", error);
