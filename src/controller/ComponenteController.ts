@@ -34,51 +34,69 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
   }
 };
 
-const upload = multer();
-
 // Função para fazer upload da foto para o ImgBB e salvar a URL no banco de dados
 export const uploadFotoComponente = async (req: Request, res: Response) => {
+  console.log("Iniciando upload de fotos...");
   try {
-    console.log("Recebendo upload de foto para componente");
     const { componenteId } = req.params;
+    console.log(`ID do Componente: ${componenteId}`);
 
-    if (!req.file) {
-      return res.status(400).json({ mensagem: "Arquivo não enviado" });
+    if (!req.files || !Array.isArray(req.files)) {
+      console.error("Nenhum arquivo foi enviado.");
+      return res.status(400).send("No files were uploaded.");
     }
 
-    const formData = new FormData();
-    formData.append("image", req.file.buffer, req.file.originalname);
+    const files = req.files as Express.Multer.File[];
+    console.log(`Número de arquivos recebidos: ${files.length}`);
 
-    const response = await axios.post(
-      "https://api.imgbb.com/1/upload?key=be6ac2e610a029ea9d2814df6495ce49",
-      formData,
-      {
-        headers: {
-          ...formData.getHeaders(),
-        },
+    try {
+      // Cria o diretório se não existir
+      const uploadDir = path.resolve(
+        __dirname,
+        "..",
+        "uploads",
+        "FotosComponentes"
+      );
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+        console.log(`Diretório criado: ${uploadDir}`);
+      } else {
+        console.log(`Diretório já existe: ${uploadDir}`);
       }
-    );
 
-    if (response.data && response.data.data && response.data.data.url) {
-      const imageUrl = response.data.data.url;
+      const fileUrls: string[] = [];
 
-      // Atualize o componente com a URL da imagem, assumindo que você tenha um modelo de componente configurado
+      for (const file of files) {
+        const uniqueName = `${uuidv4()}-${file.originalname}`;
+        const filePath = path.join(uploadDir, uniqueName);
+
+        // Salva o arquivo
+        fs.writeFileSync(filePath, file.buffer);
+        console.log(`Arquivo salvo: ${filePath}`);
+
+        // Adiciona a URL do arquivo ao array
+        fileUrls.push(`/uploads/FotosComponentes/${uniqueName}`);
+      }
+
+      // Atualiza o registro do componente com as URLs das fotos
       const componente = await prisma.componente.update({
         where: { id: componenteId },
-        data: { fotos: imageUrl },
+        data: {
+          fotos: fileUrls.join(","), // Salva as URLs das fotos como string separada por vírgula
+        },
       });
 
-      console.log("Componente atualizado:", componente);
-      return res.status(200).json({ imageUrl });
-    } else {
-      console.log("Erro ao fazer upload da imagem para o ImgBB");
-      return res
-        .status(500)
-        .json({ mensagem: "Erro ao fazer upload da imagem para o ImgBB" });
+      console.log("Atualização do componente concluída:", componente);
+      res
+        .status(200)
+        .json({ componente, message: "Files uploaded successfully." });
+    } catch (error) {
+      console.error("Erro durante o processamento dos arquivos:", error);
+      res.status(500).send("Internal Server Error");
     }
-  } catch (error) {
-    console.error("Erro ao fazer upload de foto para Componente", error);
-    return res.status(500).json({ mensagem: "Erro interno do servidor" });
+  } catch (disconnectError) {
+    console.error("Erro ao desconectar do banco de dados:", disconnectError);
+    res.status(500).send("Internal Server Error");
   }
 };
 export const criarComponente = async (req: Request, res: Response) => {

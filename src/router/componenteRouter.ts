@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { ComponenteController } from "../controller";
 import multer from "multer";
-import { uploadFotoComponente } from "../controller/ComponenteController";
 
 const router = Router();
 
@@ -35,13 +34,9 @@ router.get("/buscarComponentesPorComodo/:comodoId", async (req, res) => {
 });
 
 // Nova rota para upload de fotos
-router.post(
-  "/componentefoto/:componenteId",
-  upload.single("file"),
-  async (req, res) => {
-    console.log("Rota /componentefoto/:componenteId chamada");
-    await uploadFotoComponente(req, res);
-  }
-);
+// Nova rota para upload de fotos
+router.post("/uploadFotoComponente/:componenteId", upload.array('fotos', 10), async (req, res) => {
+  ComponenteController.uploadFotoComponente(req, res);
+});
 
 export default router;
