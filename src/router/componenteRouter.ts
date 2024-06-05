@@ -34,9 +34,13 @@ router.get("/buscarComponentesPorComodo/:comodoId", async (req, res) => {
 });
 
 // Nova rota para upload de fotos
-// Nova rota para upload de fotos
-router.put("/uploadFotoComponente/:componenteId", upload.array('fotos', 10), async (req, res) => {
-  ComponenteController.uploadFotoComponente(req, res);
-});
+// Altere upload.array('fotos', 10) para upload.any()
+router.put(
+  "/uploadFotoComponente/:componenteId",
+  upload.any(),
+  async (req, res) => {
+    ComponenteController.uploadFotoComponente(req, res);
+  }
+);
 
 export default router;
