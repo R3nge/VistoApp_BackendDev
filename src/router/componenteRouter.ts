@@ -39,7 +39,7 @@ router.put(
   "/uploadFotoComponente/:componenteId",
   upload.any(),
   async (req, res) => {
-    ComponenteController.uploadFotoComponente(req, res);
+    return ComponenteController.uploadFotoComponente(req, res);
   }
 );
 

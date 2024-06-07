@@ -1,12 +1,122 @@
-import express, { Request, Response } from "express";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import { Request, Response } from "express";
 import prisma from "../../database/prisma";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
-import axios from "axios";
-import FormData from "form-data";
+import { $Enums } from "@prisma/client";
+import { Readable } from "stream";
+
+const { google } = require("googleapis");
+const fs = require("fs");
+const path = require("path");
+
+const credentials = require("./credentials.json");
+
+// Autentique a aplicação usando as credenciais
+const auth = new google.auth.GoogleAuth({
+  credentials,
+  scopes: "https://www.googleapis.com/auth/drive",
+});
+
+// Crie um cliente OAuth2
+const drive = google.drive({ version: "v3", auth });
+
+// ID da pasta "Componentes" no Google Drive
+const componentesFolderId = "1kgSXmtimzHp_U_l9ngffNG4Hyyptj09F";
+
+// Função para fazer upload de um arquivo para o Google Drive e retornar a URL
+async function uploadFile(
+  fileBuffer: Buffer,
+  fileName: string
+): Promise<string> {
+  const fileMetadata = {
+    name: fileName,
+    parents: [componentesFolderId], // Adicione esta linha
+  };
+  // Convert Buffer to Readable Stream
+  const readableStream = new Readable();
+  readableStream.push(fileBuffer);
+  readableStream.push(null);
+
+  const media = {
+    mimeType: "image/jpeg", // Mime type do seu arquivo
+    body: readableStream,
+  };
+
+  try {
+    const res = await drive.files.create({
+      resource: fileMetadata,
+      media: media,
+      fields: "id",
+    });
+
+    // Adicione este bloco de código após a criação do arquivo
+    await drive.permissions.create({
+      fileId: res.data.id,
+      requestBody: {
+        role: "reader",
+        type: "anyone",
+      },
+    });
+
+    console.log("File uploaded with ID:", res.data.id);
+
+    // Retorna a URL do arquivo carregado
+    return `https://drive.google.com/uc?id=${res.data.id}`;
+  } catch (error) {
+    console.error("Erro ao fazer upload do arquivo:", error);
+    throw error;
+  }
+}
+
+// Função para upload de fotos do componente para o Google Drive
+export const uploadFotoComponente = async (req: any, res: any) => {
+  console.log("Iniciando upload de fotos...");
+  try {
+    const { componenteId } = req.params;
+    console.log(`ID do Componente: ${componenteId}`);
+
+    if (!req.files || !Array.isArray(req.files)) {
+      console.error("Nenhum arquivo foi enviado.");
+      return res.status(400).send("No files were uploaded.");
+    }
+
+    const files = req.files as Express.Multer.File[];
+    console.log(`Número de arquivos recebidos: ${files.length}`);
+
+    try {
+      const fileUrls: string[] = []; // Inicializa a variável fileUrls como um array vazio
+
+      for (const file of files) {
+        const uniqueName = `${uuidv4()}-${file.originalname}`;
+
+        // Faz o upload do arquivo para o Google Drive e obtém a URL
+        const url = await uploadFile(file.buffer, uniqueName);
+
+        // Adiciona a URL do arquivo ao array fileUrls
+        fileUrls.push(url);
+      }
+
+      // Atualize o registro do componente com as URLs das fotos
+      const componente = await prisma.componente.update({
+        where: { id: componenteId },
+        data: {
+          fotos: fileUrls.join(","), // Salva as URLs das fotos como string separada por vírgula
+        },
+      });
+
+      console.log("Atualização do componente concluída:", componente);
+      res
+        .status(200)
+        .json({ componente, message: "Files uploaded successfully." });
+    } catch (error) {
+      console.error("Erro durante o processamento dos arquivos:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  } catch (disconnectError) {
+    console.error("Erro ao desconectar do banco de dados:", disconnectError);
+    res.status(500).send("Internal Server Error");
+  }
+};
 
 dotenv.config();
 
@@ -34,71 +144,6 @@ const gerarIdUnico = async (prefixo: string): Promise<string> => {
   }
 };
 
-// Função para fazer upload da foto para o ImgBB e salvar a URL no banco de dados
-export const uploadFotoComponente = async (req: Request, res: Response) => {
-  console.log("Iniciando upload de fotos...");
-  try {
-    const { componenteId } = req.params;
-    console.log(`ID do Componente: ${componenteId}`);
-
-    if (!req.files || !Array.isArray(req.files)) {
-      console.error("Nenhum arquivo foi enviado.");
-      return res.status(400).send("No files were uploaded.");
-    }
-
-    const files = req.files as Express.Multer.File[];
-    console.log(`Número de arquivos recebidos: ${files.length}`);
-
-    try {
-      // Cria o diretório se não existir
-      const uploadDir = path.resolve(
-        __dirname,
-        "..",
-        "uploads",
-        "FotosComponentes"
-      );
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-        console.log(`Diretório criado: ${uploadDir}`);
-      } else {
-        console.log(`Diretório já existe: ${uploadDir}`);
-      }
-
-      const fileUrls: string[] = [];
-
-      for (const file of files) {
-        const uniqueName = `${uuidv4()}-${file.originalname}`;
-        const filePath = path.join(uploadDir, uniqueName);
-
-        // Salva o arquivo
-        fs.writeFileSync(filePath, file.buffer);
-        console.log(`Arquivo salvo: ${filePath}`);
-
-        // Adiciona a URL do arquivo ao array
-        fileUrls.push(`/uploads/FotosComponentes/${uniqueName}`);
-      }
-
-      // Atualiza o registro do componente com as URLs das fotos
-      const componente = await prisma.componente.update({
-        where: { id: componenteId },
-        data: {
-          fotos: fileUrls.join(","), // Salva as URLs das fotos como string separada por vírgula
-        },
-      });
-
-      console.log("Atualização do componente concluída:", componente);
-      res
-        .status(200)
-        .json({ componente, message: "Files uploaded successfully." });
-    } catch (error) {
-      console.error("Erro durante o processamento dos arquivos:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  } catch (disconnectError) {
-    console.error("Erro ao desconectar do banco de dados:", disconnectError);
-    res.status(500).send("Internal Server Error");
-  }
-};
 export const criarComponente = async (req: Request, res: Response) => {
   try {
     const { vistoriaId, comodoId } = req.params;
