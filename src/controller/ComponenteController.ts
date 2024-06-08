@@ -55,7 +55,7 @@ async function uploadFile(
 ): Promise<string> {
   const fileMetadata = {
     name: fileName,
-    parents: [componentesFolderId], // Adicione esta linha
+    parents: [componentesFolderId],
   };
   // Converta o Buffer para um Readable Stream
   const readableStream = new Readable();
@@ -92,6 +92,7 @@ async function uploadFile(
     throw error;
   }
 }
+
 
 // Função para upload de fotos do componente para o Google Drive
 export const uploadFotoComponente = async (req: any, res: any) => {
