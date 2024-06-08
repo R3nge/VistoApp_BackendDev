@@ -9,9 +9,20 @@ const { google } = require("googleapis");
 const fs = require("fs");
 const path = require("path");
 
-// const credentials = require("./credentials.json");
+// Carregar variáveis de ambiente do arquivo .env
+dotenv.config();
 
-// AUTORIZAÇÃO PARA AMBIENTE TESTE LOCALHGOST
+// Verifique se todas as variáveis de ambiente necessárias estão definidas
+const requiredEnvVars = [
+  'TYPE', 'PROJECT_ID', 'PRIVATE_KEY_ID', 'PRIVATE_KEY', 'CLIENT_EMAIL',
+  'CLIENT_ID', 'AUTH_URI', 'TOKEN_URI', 'AUTH_PROVIDER_X509_CERT_URL', 'CLIENT_X509_CERT_URL'
+];
+
+requiredEnvVars.forEach((envVar) => {
+  if (!process.env[envVar]) {
+    throw new Error(`Falta a variável de ambiente necessária: ${envVar}`);
+  }
+});
 
 // Defina a autenticação condicionalmente
 let auth;
@@ -46,7 +57,7 @@ async function uploadFile(
     name: fileName,
     parents: [componentesFolderId], // Adicione esta linha
   };
-  // Convert Buffer to Readable Stream
+  // Converta o Buffer para um Readable Stream
   const readableStream = new Readable();
   readableStream.push(fileBuffer);
   readableStream.push(null);
@@ -72,7 +83,7 @@ async function uploadFile(
       },
     });
 
-    console.log("File uploaded with ID:", res.data.id);
+    console.log("Arquivo carregado com ID:", res.data.id);
 
     // Retorna a URL do arquivo carregado
     return `https://drive.google.com/uc?id=${res.data.id}`;
