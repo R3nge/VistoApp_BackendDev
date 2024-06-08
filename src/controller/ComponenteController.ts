@@ -4,37 +4,51 @@ import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { $Enums } from "@prisma/client";
 import { Readable } from "stream";
-import "dotenv/config"; // Certifique-se de que dotenv está sendo carregado
-
-dotenv.config();
 
 const { google } = require("googleapis");
 const fs = require("fs");
 const path = require("path");
 
-// // AUTORIZAÇÃO PARA AMBIENTE TESTE LOCALHOST
+const credentials = require("./credentials.json");
+
+// AUTORIZAÇÃO PARA AMBIENTE TESTE LOCALHGOST
+const auth = new google.auth.GoogleAuth({
+  credentials,
+  scopes: "https://www.googleapis.com/auth/drive",
+});
+
+//PARA PRODUÇÃO
+
 // const auth = new google.auth.GoogleAuth({
-//   credentials,
+//   credentials: {
+//     type: process.env.TYPE,
+//     project_id: process.env.PROJECT_ID,
+//     private_key_id: process.env.PRIVATE_KEY_ID,
+//     private_key: process.env.PRIVATE_KEY.replace(/\\n/g, "\n"),
+//     client_email: process.env.CLIENT_EMAIL,
+//     client_id: process.env.CLIENT_ID,
+//     auth_uri: process.env.AUTH_URI,
+//     token_uri: process.env.TOKEN_URI,
+//     auth_provider_x509_cert_url: process.env.AUTH_PROVIDER_X509_CERT_URL,
+//     client_x509_cert_url: process.env.CLIENT_X509_CERT_URL,
+//   },
 //   scopes: "https://www.googleapis.com/auth/drive",
 // });
 
-//PARA PRODUÇÃO
-// Autorização para produção
-const auth = new google.auth.GoogleAuth({
-  credentials: {
-    type: process.env.TYPE!,
-    project_id: process.env.PROJECT_ID!,
-    private_key_id: process.env.PRIVATE_KEY_ID!,
-    private_key: process.env.PRIVATE_KEY!.replace(/\\n/g, "\n"),
-    client_email: process.env.CLIENT_EMAIL!,
-    client_id: process.env.CLIENT_ID!,
-    auth_uri: process.env.AUTH_URI!,
-    token_uri: process.env.TOKEN_URI!,
-    auth_provider_x509_cert_url: process.env.AUTH_PROVIDER_X509_CERT_URL!,
-    client_x509_cert_url: process.env.CLIENT_X509_CERT_URL!,
-  },
-  scopes: "https://www.googleapis.com/auth/drive",
-});
+// CREDENTIALS.JSON //// USE SOMENTE QUANDO FOR USAR EM LOCAL HOST
+// {
+//   "type": "service_account",
+//   "project_id": "daring-acumen-425623-e3",
+//   "private_key_id": "1640a82e6119fb9b5f481b9e122797e4c291a0d7",
+//   "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCmTgve6vmGVPg8\nmhd+4tYmA5cKgSQIrmlydzuS7XObDtqDs4xWa5arfUtrwX7pnqxVswHWvkzeQxa8\nQ2WEgtwncq5n9dLeCup0/8TqcTfQObYMcOCtkV8dl3KQN3mgHT5BjnmvacpGjg5M\n6rTLxNL18kVQvG+CaTej+uoRFjVg/rkXhZFyTiXu/yLsDdxPKn7h5T7ILlxfXCyE\nlGCoNs+xA3ddmJ/mp/o1Es1GYyBxqDcR/I+SVUCA+3NoeZvv0R8nrXjt5fieGIrN\nfxPqEtx62q/+Tyn1mhMSdcKm+/SMJdYW8evQ64Ckq9d0IAuZ81Rz4JzRkrbDTXW+\nlkudi9+NAgMBAAECggEAA72Jos/iINVUZ/iHQsFTU7OM+B2Dc/aIRJzN6DYS/Y/N\n9lxZcbAlyWGeCqRleFerRJosFmpdTDpyDnXtmJdg4DpCFfB/d6MDNvJxuVwmhzZl\nE86OHxk/7Gh1mSzGPYWq2sqbjghxFjkntS8qNdMNc56pVHGIiIRZTgTcstmvBalr\nqZEyyoxGP7Mocybk8RMrnra1CH2boyi6PIBUASXlbiqVjlkxfQxNIaVASKmOEH5k\n6KK7XWDx3y8zZfVA9eywJOD4DRDOGx5nagpWAaRVsLSfVlFM6vz25DtEzdZNR0XL\nQAuiV2GRnPWIuvnTjVTCX5YsygXa9bZGK8FjxxkvOQKBgQDi1Hg96sHAlx86dX0H\nBQqKSGipUpMAwFwbJfDZ2LKk/h8LKqiLR3XGKCiljZX4qcaMLWdsEuDt+7Y7NFDQ\nMl+uOjGtREOrVQgWT+tASsBLYkLuh/UQJkm1J5IUNYMx38HH1KmFADlr0GaJsjgE\nNHFWrzjHM1TsLsft2eLQv0T9/wKBgQC7sQOJwsLKxm+vymRbBrf51HrkGctFQdiT\nERStHEx9W7QwSsZtJ74n5vyTw5jtEcnNy/ubqccfb+U/pO+rlCtDf9+sDCJFqCaX\n1+7TR2H3YoZhbeebUqJdA978Z+atjwbfvcmM2Qw4g9Upi0Zq4tk6fr3/9gKSCV2a\n/iJd8/46cwKBgQCxEBYEjzpLciwoYAoG7sJ5i2hXtGOYFJBRiN5nzyY0cUIeX2BN\nyKyA0FxaTxmgkDayucafsGTwoKpxsLbcrlXOFRMuI7mHBstXT29eMnvE3KFOvcZo\notqqlIcNS3BsADSuHq1tau1n4bgJCJt9fMp0VjdGGCXUb/gVDR5mwMfEVQKBgChE\n8VpkRADXlGzmAqQZC+35Lai09AzW9M2Q85u0n6ChxUY7NNmElmLfRz+4zp3GnEKg\nSkp6obNYAZqnG5j3gFTKIcY7EDtbuXQIqz//Z8B5DhXnS7Liht1oEDadYDvKnRHy\nGUUz6FBT0K9KJ4CVTUAko0VAlgqZIdE4R01bJSeLAoGAfal0D2usX2NXQ5HxbW3c\n+QlwlQyANTfLLe8+EDZYHff10M+5Gt8Z6JaU8RYCTUUplP7F8GmQi0/djmO+NXYG\nZ4oPL2dvXkoxnZRjYJbuQC4yKrzz+409KLwC7qQkHxkWinThjk5Ql+nbrhilMsLj\nz65j9szbdHrhrvxXzY/CJnc=\n-----END PRIVATE KEY-----\n",
+//   "client_email": "fotosvisto@daring-acumen-425623-e3.iam.gserviceaccount.com",
+//   "client_id": "107342072185218006336",
+//   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+//   "token_uri": "https://oauth2.googleapis.com/token",
+//   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+//   "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/fotosvisto%40daring-acumen-425623-e3.iam.gserviceaccount.com",
+//   "universe_domain": "googleapis.com"
+// }
 
 // Crie um cliente OAuth2
 const drive = google.drive({ version: "v3", auth });
@@ -49,16 +63,15 @@ async function uploadFile(
 ): Promise<string> {
   const fileMetadata = {
     name: fileName,
-    parents: [componentesFolderId],
+    parents: [componentesFolderId], // Adicione esta linha
   };
-
   // Convert Buffer to Readable Stream
   const readableStream = new Readable();
   readableStream.push(fileBuffer);
   readableStream.push(null);
 
   const media = {
-    mimeType: "image/jpeg",
+    mimeType: "image/jpeg", // Mime type do seu arquivo
     body: readableStream,
   };
 
