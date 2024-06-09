@@ -14,8 +14,16 @@ dotenv.config();
 
 // Verifique se todas as variáveis de ambiente necessárias estão definidas
 const requiredEnvVars = [
-  'TYPE', 'PROJECT_ID', 'PRIVATE_KEY_ID', 'PRIVATE_KEY', 'CLIENT_EMAIL',
-  'CLIENT_ID', 'AUTH_URI', 'TOKEN_URI', 'AUTH_PROVIDER_X509_CERT_URL', 'CLIENT_X509_CERT_URL'
+  "TYPE",
+  "PROJECT_ID",
+  "PRIVATE_KEY_ID",
+  "PRIVATE_KEY",
+  "CLIENT_EMAIL",
+  "CLIENT_ID",
+  "AUTH_URI",
+  "TOKEN_URI",
+  "AUTH_PROVIDER_X509_CERT_URL",
+  "CLIENT_X509_CERT_URL",
 ];
 
 requiredEnvVars.forEach((envVar) => {
@@ -48,15 +56,51 @@ const drive = google.drive({ version: "v3", auth });
 // ID da pasta "Componentes" no Google Drive
 const componentesFolderId = "1kgSXmtimzHp_U_l9ngffNG4Hyyptj09F";
 
+// Função para verificar se a pasta do componente já existe, e criar se não existir
+async function getOrCreateComponentFolder(
+  componentName: string
+): Promise<string> {
+  const folderMetadata = {
+    name: componentName,
+    mimeType: "application/vnd.google-apps.folder",
+    parents: [componentesFolderId],
+  };
+
+  try {
+    // Verificar se a pasta já existe
+    const res = await drive.files.list({
+      q: `mimeType='application/vnd.google-apps.folder' and name='${componentName}' and '${componentesFolderId}' in parents and trashed=false`,
+      fields: "files(id, name)",
+    });
+
+    if (res.data.files && res.data.files.length > 0) {
+      // Retorna o ID da pasta existente
+      return res.data.files[0].id!;
+    } else {
+      // Cria uma nova pasta
+      const folder = await drive.files.create({
+        resource: folderMetadata,
+        fields: "id",
+      });
+      return folder.data.id!;
+    }
+  } catch (error) {
+    console.error("Erro ao verificar ou criar a pasta do componente:", error);
+    throw error;
+  }
+}
+
 // Função para fazer upload de um arquivo para o Google Drive e retornar a URL
 async function uploadFile(
   fileBuffer: Buffer,
-  fileName: string
+  fileName: string,
+  parentFolderId: string
 ): Promise<string> {
   const fileMetadata = {
     name: fileName,
-    parents: [componentesFolderId],
+    parents: [parentFolderId],
   };
+
   // Converta o Buffer para um Readable Stream
   const readableStream = new Readable();
   readableStream.push(fileBuffer);
@@ -93,30 +137,37 @@ async function uploadFile(
   }
 }
 
-
 // Função para upload de fotos do componente para o Google Drive
 export const uploadFotoComponente = async (req: any, res: any) => {
   console.log("Iniciando upload de fotos...");
   try {
-    const { componenteId } = req.params;
+    const { componenteId, tipo } = req.params;
     console.log(`ID do Componente: ${componenteId}`);
+    console.log(`Nome do Componente: ${tipo}`);
 
     if (!req.files || !Array.isArray(req.files)) {
       console.error("Nenhum arquivo foi enviado.");
-      return res.status(400).send("No files were uploaded.");
+      return res.status(400).send("Nenhum arquivo foi enviado.");
     }
 
     const files = req.files as Express.Multer.File[];
     console.log(`Número de arquivos recebidos: ${files.length}`);
 
     try {
+      // Obtém ou cria a pasta do componente
+      const componentFolderId = await getOrCreateComponentFolder(tipo);
+
       const fileUrls: string[] = []; // Inicializa a variável fileUrls como um array vazio
 
       for (const file of files) {
         const uniqueName = `${uuidv4()}-${file.originalname}`;
 
         // Faz o upload do arquivo para o Google Drive e obtém a URL
-        const url = await uploadFile(file.buffer, uniqueName);
+        const url = await uploadFile(
+          file.buffer,
+          uniqueName,
+          componentFolderId
+        );
 
         // Adiciona a URL do arquivo ao array fileUrls
         fileUrls.push(url);
@@ -133,14 +184,75 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       console.log("Atualização do componente concluída:", componente);
       res
         .status(200)
-        .json({ componente, message: "Files uploaded successfully." });
+        .json({ componente, message: "Arquivos carregados com sucesso." });
     } catch (error) {
       console.error("Erro durante o processamento dos arquivos:", error);
-      res.status(500).send("Internal Server Error");
+      res.status(500).send("Erro interno do servidor.");
     }
   } catch (disconnectError) {
     console.error("Erro ao desconectar do banco de dados:", disconnectError);
-    res.status(500).send("Internal Server Error");
+    res.status(500).send("Erro interno do servidor.");
+  }
+};
+
+// Função para buscar a pasta do componente
+async function getComponentFolderId(
+  componentName: string
+): Promise<string | null> {
+  try {
+    const res = await drive.files.list({
+      q: `mimeType='application/vnd.google-apps.folder' and name='${componentName}' and '${componentesFolderId}' in parents and trashed=false`,
+      fields: "files(id, name)",
+    });
+
+    if (res.data.files && res.data.files.length > 0) {
+      return res.data.files[0].id!;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Erro ao buscar a pasta do componente:", error);
+    throw error;
+  }
+}
+
+// Função para listar as fotos do componente
+async function listComponentPhotos(componentName: string): Promise<string[]> {
+  try {
+    const folderId = await getComponentFolderId(componentName);
+    if (!folderId) {
+      throw new Error(`Pasta do componente "${componentName}" não encontrada.`);
+    }
+
+    const res = await drive.files.list({
+      q: `'${folderId}' in parents and mimeType contains 'image/' and trashed=false`,
+      fields: "files(id, name)",
+    });
+
+    const fileUrls = res.data.files.map(
+      (file: { id: any }) => `https://drive.google.com/uc?id=${file.id}`
+    );
+    return fileUrls;
+  } catch (error) {
+    console.error("Erro ao listar as fotos do componente:", error);
+    throw error;
+  }
+}
+
+// Função para buscar e listar as fotos do componente
+export const getFotosComponente = async (req: any, res: any) => {
+  try {
+    const { componenteName } = req.params;
+    console.log(`Nome do Componente: ${componenteName}`);
+
+    const fileUrls = await listComponentPhotos(componenteName);
+
+    res
+      .status(200)
+      .json({ fotos: fileUrls, message: "Fotos carregadas com sucesso." });
+  } catch (error) {
+    console.error("Erro ao buscar as fotos do componente:", error);
+    res.status(500).send("Erro interno do servidor.");
   }
 };
 
@@ -358,6 +470,7 @@ const ComponenteController = {
   obterUltimoComodoUsuario,
   buscarComponentesPorComodo,
   uploadFotoComponente,
+  getComponentFolderId,
 };
 
 export default ComponenteController;
