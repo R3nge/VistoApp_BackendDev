@@ -470,7 +470,7 @@ const ComponenteController = {
   obterUltimoComodoUsuario,
   buscarComponentesPorComodo,
   uploadFotoComponente,
-  getComponentFolderId,
+  getFotosComponente,
 };
 
 export default ComponenteController;
