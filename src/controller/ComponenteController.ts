@@ -215,44 +215,28 @@ async function getComponentFolderId(
     throw error;
   }
 }
+/// GET FOTOS //
 
-// Função para listar as fotos do componente
-async function listComponentPhotos(componentName: string): Promise<string[]> {
+export const getFotosComponente = async (req: Request, res: Response) => {
   try {
-    const folderId = await getComponentFolderId(componentName);
-    if (!folderId) {
-      throw new Error(`Pasta do componente "${componentName}" não encontrada.`);
-    }
+    const { componenteId } = req.params;
 
-    const res = await drive.files.list({
-      q: `'${folderId}' in parents and mimeType contains 'image/' and trashed=false`,
-      fields: "files(id, name)",
+    // Recuperar o registro do componente do banco de dados
+    const componente = await prisma.componente.findUnique({
+      where: { id: componenteId },
     });
 
-    const fileUrls = res.data.files.map(
-      (file: { id: any }) => `https://drive.google.com/uc?id=${file.id}`
-    );
-    return fileUrls;
+    if (!componente) {
+      return res.status(404).json({ error: "Componente não encontrado" });
+    }
+
+    // Recuperar as URLs das fotos e dividir em um array
+    const fileUrls = componente.fotos ? componente.fotos.split(",") : [];
+
+    res.status(200).json({ fileUrls });
   } catch (error) {
-    console.error("Erro ao listar as fotos do componente:", error);
-    throw error;
-  }
-}
-
-// Função para buscar e listar as fotos do componente
-export const getFotosComponente = async (req: any, res: any) => {
-  try {
-    const { componenteName } = req.params;
-    console.log(`Nome do Componente: ${componenteName}`);
-
-    const fileUrls = await listComponentPhotos(componenteName);
-
-    res
-      .status(200)
-      .json({ fotos: fileUrls, message: "Fotos carregadas com sucesso." });
-  } catch (error) {
-    console.error("Erro ao buscar as fotos do componente:", error);
-    res.status(500).send("Erro interno do servidor.");
+    console.error("Erro ao recuperar as fotos do componente:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
 
