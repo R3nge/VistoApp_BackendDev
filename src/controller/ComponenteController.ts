@@ -142,6 +142,8 @@ export const uploadFotoComponente = async (req: any, res: any) => {
   console.log("Iniciando upload de fotos...");
   try {
     const { componenteId, tipo } = req.params;
+    const { vistoriaId, nome } = req.body; // Certifique-se de passar vistoriaId e nome no corpo da solicitação
+
     console.log(`ID do Componente: ${componenteId}`);
     console.log(`Nome do Componente: ${tipo}`);
 
@@ -160,7 +162,9 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       const fileUrls: string[] = []; // Inicializa a variável fileUrls como um array vazio
 
       for (const file of files) {
-        const uniqueName = `${uuidv4()}-${file.originalname}`;
+        const uniqueName = `${componenteId}-${vistoriaId}-${nome}-${Date.now()}-${
+          file.originalname
+        }`; // Nome completo da foto
 
         // Faz o upload do arquivo para o Google Drive e obtém a URL
         const url = await uploadFile(
