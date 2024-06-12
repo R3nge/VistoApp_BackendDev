@@ -200,27 +200,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
 };
 
 // Função para buscar a pasta do componente
-async function getComponentFolderId(
-  componentName: string
-): Promise<string | null> {
-  try {
-    const res = await drive.files.list({
-      q: `mimeType='application/vnd.google-apps.folder' and name='${componentName}' and '${componentesFolderId}' in parents and trashed=false`,
-      fields: "files(id, name)",
-    });
-
-    if (res.data.files && res.data.files.length > 0) {
-      return res.data.files[0].id!;
-    } else {
-      return null;
-    }
-  } catch (error) {
-    console.error("Erro ao buscar a pasta do componente:", error);
-    throw error;
-  }
-}
-/// GET FOTOS //
-
+// Função para buscar fotos de um componente específico
 export const getFotosComponente = async (req: Request, res: Response) => {
   try {
     const { componenteId } = req.params;
@@ -243,6 +223,7 @@ export const getFotosComponente = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
+
 
 dotenv.config();
 
