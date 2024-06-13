@@ -89,6 +89,13 @@ model Comodo {
   componente Componente[]
 }
 
+model FotoComponente {
+  id           String   @id @unique @default(uuid())
+  url          String
+  componenteId String
+  componente   Componente @relation(fields: [componenteId], references: [id])
+}
+
 model Componente {
   id         String   @id @unique @default(uuid())
   comodo     Comodo   @relation(fields: [comodoId], references: [id])
@@ -100,8 +107,9 @@ model Componente {
   cor        Cor
   estado     Estado
   material   Material
-  fotos      String? // Adicionado campo para URLs das fotos
+  fotos      FotoComponente[] // Relacionamento com o modelo Foto
 }
+
 
 model ItemPrincipal {
   id   String @id @unique @default(uuid())

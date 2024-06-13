@@ -177,11 +177,23 @@ export const uploadFotoComponente = async (req: any, res: any) => {
         fileUrls.push(url);
       }
 
+      // Recupere as URLs existentes
+      const componenteExistente = await prisma.componente.findUnique({
+        where: { id: componenteId },
+        select: { fotos: true },
+      });
+
+      let updatedFileUrls = fileUrls.join(",");
+
+      if (componenteExistente?.fotos) {
+        updatedFileUrls = componenteExistente.fotos + "," + updatedFileUrls;
+      }
+
       // Atualize o registro do componente com as URLs das fotos
       const componente = await prisma.componente.update({
         where: { id: componenteId },
         data: {
-          fotos: fileUrls.join(","), // Salva as URLs das fotos como string separada por vírgula
+          fotos: updatedFileUrls, // Salva as URLs das fotos como string separada por vírgula
         },
       });
 
@@ -199,30 +211,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
   }
 };
 
-// Função para buscar a pasta do componente
-// Função para buscar fotos de um componente específico
-export const getFotosComponente = async (req: Request, res: Response) => {
-  try {
-    const { componenteId } = req.params;
 
-    // Recuperar o registro do componente do banco de dados
-    const componente = await prisma.componente.findUnique({
-      where: { id: componenteId },
-    });
-
-    if (!componente) {
-      return res.status(404).json({ error: "Componente não encontrado" });
-    }
-
-    // Recuperar as URLs das fotos e dividir em um array
-    const fileUrls = componente.fotos ? componente.fotos.split(",") : [];
-
-    res.status(200).json({ fileUrls });
-  } catch (error) {
-    console.error("Erro ao recuperar as fotos do componente:", error);
-    res.status(500).json({ error: "Erro interno do servidor" });
-  }
-};
 
 
 dotenv.config();
@@ -439,7 +428,6 @@ const ComponenteController = {
   obterUltimoComodoUsuario,
   buscarComponentesPorComodo,
   uploadFotoComponente,
-  getFotosComponente,
 };
 
 export default ComponenteController;
