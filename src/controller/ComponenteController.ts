@@ -2,12 +2,9 @@ import { Request, Response } from "express";
 import prisma from "../../database/prisma";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
-import { $Enums } from "@prisma/client";
 import { Readable } from "stream";
 
 const { google } = require("googleapis");
-const fs = require("fs");
-const path = require("path");
 
 // Carregar variáveis de ambiente do arquivo .env
 dotenv.config();
@@ -162,9 +159,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       const fileUrls: string[] = []; // Inicializa a variável fileUrls como um array vazio
 
       for (const file of files) {
-        const uniqueName = `${componenteId}-${vistoriaId}-${nome}-${Date.now()}-${
-          file.originalname
-        }`; // Nome completo da foto
+        const uniqueName = `${componenteId}-${vistoriaId}-${nome}-${Date.now()}-${file.originalname}`; // Nome completo da foto
 
         // Faz o upload do arquivo para o Google Drive e obtém a URL
         const url = await uploadFile(
@@ -177,23 +172,23 @@ export const uploadFotoComponente = async (req: any, res: any) => {
         fileUrls.push(url);
       }
 
-      // Recupere as URLs existentes
-      const componenteExistente = await prisma.componente.findUnique({
-        where: { id: componenteId },
-        select: { fotos: true },
-      });
+      // Cria registros para as novas fotos no banco de dados
+      const fotoRecords = fileUrls.map((url) => ({
+        id: uuidv4(),
+        url,
+        componenteId
+      }));
 
-      let updatedFileUrls = fileUrls.join(",");
-
-      if (componenteExistente?.fotos) {
-        updatedFileUrls = componenteExistente.fotos + "," + updatedFileUrls;
-      }
-
-      // Atualize o registro do componente com as URLs das fotos
+      // Atualize o registro do componente com as novas fotos
       const componente = await prisma.componente.update({
         where: { id: componenteId },
         data: {
-          fotos: updatedFileUrls, // Salva as URLs das fotos como string separada por vírgula
+          fotos: {
+            create: fotoRecords,
+          },
+        },
+        include: {
+          fotos: true, // Inclua as fotos na resposta para verificar a atualização
         },
       });
 
@@ -210,8 +205,6 @@ export const uploadFotoComponente = async (req: any, res: any) => {
     res.status(500).send("Erro interno do servidor.");
   }
 };
-
-
 
 
 dotenv.config();
