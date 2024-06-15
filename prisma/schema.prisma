@@ -25,6 +25,7 @@ model Pessoa {
   vinculo     Vinculo[]
   aluga       Aluga[]
   vistoriador Vistoria[]
+  FotoPessoa  FotoPessoa[]
 
   @@index([enderecoId])
 }
@@ -52,8 +53,8 @@ model Vinculo {
 }
 
 model Imovel {
-  id          String     @id @unique @default(uuid())
-  icm         String     @unique @db.VarChar(20)
+  id          String       @id @unique @default(uuid())
+  icm         String       @unique @db.VarChar(20)
   tipo        TipoImovel
   rua         String
   complemento String
@@ -67,6 +68,7 @@ model Imovel {
   aluga       Aluga[]
   comodo      Comodo[]
   vistoria    Vistoria[]
+  FotoImovel  FotoImovel[]
 }
 
 model Aluga {
@@ -90,17 +92,31 @@ model Comodo {
 }
 
 model FotoComponente {
-  id           String   @id @unique @default(uuid())
+  id           String     @id @unique @default(uuid())
   url          String
-  componenteId String
   componente   Componente @relation(fields: [componenteId], references: [id])
+  componenteId String
+}
+
+model FotoImovel {
+  id       String @id @unique @default(uuid())
+  url      String
+  imovel   Imovel @relation(fields: [imovelId], references: [id])
+  imovelId String
+}
+
+model FotoPessoa {
+  id       String @id @unique @default(uuid())
+  url      String
+  pessoa   Pessoa @relation(fields: [pessoaId], references: [id])
+  pessoaId String
 }
 
 model Componente {
-  id         String   @id @unique @default(uuid())
-  comodo     Comodo   @relation(fields: [comodoId], references: [id])
+  id         String           @id @unique @default(uuid())
+  comodo     Comodo           @relation(fields: [comodoId], references: [id])
   comodoId   String
-  vistoria   Vistoria @relation(fields: [vistoriaId], references: [id])
+  vistoria   Vistoria         @relation(fields: [vistoriaId], references: [id])
   vistoriaId String
   tipo       String
   obs        String
@@ -109,7 +125,6 @@ model Componente {
   material   Material
   fotos      FotoComponente[] // Relacionamento com o modelo Foto
 }
-
 
 model ItemPrincipal {
   id   String @id @unique @default(uuid())

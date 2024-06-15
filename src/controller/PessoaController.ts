@@ -379,32 +379,42 @@ export const atualizarPessoa = async (req: Request, res: Response) => {
 
 export const buscarPessoas = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-
-    const pessoa = await prisma.pessoa.findUnique({
+    const proprietarios = await prisma.pessoa.findMany({
       where: {
-        id,
+        type: RolePessoa.Proprietario,
       },
       include: {
         endereco: true,
       },
     });
 
-    if (!pessoa) {
-      return res.status(HttpStatus.NaoEncontrado).json({
-        mensagem: "Pessoa não encontrada",
-      });
-    }
+    const inquilinos = await prisma.pessoa.findMany({
+      where: {
+        type: RolePessoa.Inquilino,
+      },
+      include: {
+        endereco: true,
+      },
+    });
 
-    // Formatando a data e o telefone ao buscar a pessoa
-    const pessoaFormatada = {
-      ...pessoa,
-      tel: formatarTelefone(pessoa.tel),
+    const vistoriadores = await prisma.pessoa.findMany({
+      where: {
+        type: RolePessoa.Vistoriador,
+      },
+      include: {
+        endereco: true,
+      },
+    });
+
+    const todasPessoas = {
+      proprietarios,
+      inquilinos,
+      vistoriadores,
     };
 
-    return res.status(HttpStatus.Sucesso).json(pessoaFormatada);
+    return res.status(HttpStatus.Sucesso).json(todasPessoas);
   } catch (error) {
-    console.error("Erro ao buscar Pessoa", error);
+    console.error("Erro ao buscar pessoas por tipo", error);
     return res
       .status(HttpStatus.ErroInternoServidor)
       .json({ mensagem: "Erro interno do servidor" });
