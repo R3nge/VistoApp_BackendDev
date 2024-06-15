@@ -159,7 +159,9 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       const fileUrls: string[] = []; // Inicializa a variável fileUrls como um array vazio
 
       for (const file of files) {
-        const uniqueName = `${componenteId}-${vistoriaId}-${nome}-${Date.now()}-${file.originalname}`; // Nome completo da foto
+        const uniqueName = `${componenteId}-${vistoriaId}-${nome}-${Date.now()}-${
+          file.originalname
+        }`; // Nome completo da foto
 
         // Faz o upload do arquivo para o Google Drive e obtém a URL
         const url = await uploadFile(
@@ -176,7 +178,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       const fotoRecords = fileUrls.map((url) => ({
         id: uuidv4(),
         url,
-        componenteId
+        componenteId,
       }));
 
       // Atualize o registro do componente com as novas fotos
@@ -206,6 +208,31 @@ export const uploadFotoComponente = async (req: any, res: any) => {
   }
 };
 
+const getFotosComponente = async (req: Request, res: Response) => {
+  const componenteId = req.params.componenteId;
+
+  try {
+    // Busca o componente pelo ID junto com suas fotos associadas
+    const componente = await prisma.componente.findUnique({
+      where: { id: componenteId },
+      include: {
+        fotos: true, // Inclui todas as fotos associadas ao componente
+      },
+    });
+
+    if (!componente) {
+      return res.status(404).json({ message: "Componente não encontrado." });
+    }
+
+    // Extrai as URLs das fotos do componente
+    const fotoUrls = componente.fotos.map((foto) => foto.url);
+
+    res.status(200).json({ fotos: fotoUrls });
+  } catch (error) {
+    console.error("Erro ao obter fotos do componente:", error);
+    res.status(500).send("Erro interno do servidor.");
+  }
+};
 
 dotenv.config();
 
@@ -421,6 +448,7 @@ const ComponenteController = {
   obterUltimoComodoUsuario,
   buscarComponentesPorComodo,
   uploadFotoComponente,
+  getFotosComponente,
 };
 
 export default ComponenteController;

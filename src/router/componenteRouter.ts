@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { ComponenteController } from "../controller";
 import multer from "multer";
-import { getFotosComponente } from "../controller/ComponenteController";
 
 const router = Router();
 
