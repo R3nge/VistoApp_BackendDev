@@ -171,6 +171,7 @@ export const obterVistorias = async (
           },
         },
         vistoriador: true, // Inclui o vistoriador associado à vistoria
+        proprietario: true,
       },
     });
 
