@@ -25,8 +25,8 @@ import exportaRouter from "../router/exportaRouter";
 const app = express();
 
 app.use(cors());
-app.use(express.json());
-
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Use routers
 app.use("/", userRouter);
 app.use("/", permissionRouter);
@@ -42,7 +42,8 @@ app.use("/", pessoaRouter);
 app.use("/", vinculoRouter);
 
 // Servir arquivos estáticos da pasta configurada na variável de ambiente
-const imageUploadPath = process.env.IMAGE_UPLOAD_PATH || "images/pictures/componentes";
+const imageUploadPath =
+  process.env.IMAGE_UPLOAD_PATH || "images/pictures/componentes";
 app.use("/images", express.static(path.resolve(imageUploadPath)));
 
 // Test route
