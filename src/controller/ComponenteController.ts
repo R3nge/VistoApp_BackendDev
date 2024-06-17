@@ -178,7 +178,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       const fotoRecords = fileUrls.map((url) => ({
         id: uuidv4(),
         url,
-        componenteId,
+        // componenteId, // Remove this line
       }));
 
       // Atualize o registro do componente com as novas fotos
@@ -190,7 +190,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
           },
         },
         include: {
-          fotos: true, // Inclua as fotos na resposta para verificar a atualização
+          fotos: true,
         },
       });
 
