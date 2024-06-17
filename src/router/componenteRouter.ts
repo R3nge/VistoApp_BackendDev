@@ -45,7 +45,7 @@ router.put(
 
 // Rota para buscar as fotos de um componente
 
-router.get("/getFotosComponente/:componenteId", async (req, res) => {
+router.get("/getFotosComponente/:componenteId/:tipo", async (req, res) => {
   ComponenteController.getFotosComponente(req, res);
 });
 
