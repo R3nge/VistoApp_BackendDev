@@ -422,7 +422,32 @@ export const buscarPessoas = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
+export const buscarPessoaPorId = async (req: Request, res: Response) => {
+  const { id } = req.params;
 
+  try {
+    const pessoa = await prisma.pessoa.findUnique({
+      where: { id },
+
+      include: {
+        endereco: true,
+      },
+    });
+
+    if (!pessoa) {
+      return res.status(HttpStatus.NaoEncontrado).json({ mensagem: "Pessoa não encontrada" });
+    }
+
+    return res.status(HttpStatus.Sucesso).json(pessoa);
+  } catch (error) {
+    console.error("Erro ao buscar pessoa por ID", error);
+    return res
+      .status(HttpStatus.ErroInternoServidor)
+      .json({ mensagem: "Erro interno do servidor" });
+  } finally {
+    await prisma.$disconnect();
+  }
+};
 export const excluirPessoa = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -611,12 +636,12 @@ const PessoaController = {
   atualizarPessoa,
   buscarPessoas,
   excluirPessoa,
-  // buscarPessoasPorNome,
   buscarPessoasPorEndereco,
   // gerarPDFPessoas,
   buscarTodasPessoas,
   buscarProprietarios,
   buscarInquilino,
   buscarVistoriadores,
+  buscarPessoaPorId
 };
 export default PessoaController;

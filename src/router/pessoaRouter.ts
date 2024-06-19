@@ -31,9 +31,9 @@ router.get("/buscarProprietario", async (req, res) => {
   await PessoaController.buscarProprietarios(req, res);
 });
 
-// router.get("/buscarPorNome/:nome", async (req, res) => {
-//   await PessoaController.buscarPessoasPorNome(req, res);
-// });
+router.get("/pessoa/por-id/:pessoaId", async (req, res) => {
+  await PessoaController.buscarPessoaPorId(req, res);
+});
 
 router.get("/buscarPorEndereco/:cidade/:estado", async (req, res) => {
   await PessoaController.buscarPessoasPorEndereco(req, res);
