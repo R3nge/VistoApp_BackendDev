@@ -54,9 +54,7 @@ const drive = google.drive({ version: "v3", auth });
 const componentesFolderId = "1kgSXmtimzHp_U_l9ngffNG4Hyyptj09F";
 
 // Função para verificar se a pasta do componente já existe, e criar se não existir
-async function getOrCreateComponentFolder(
-  componentName: string
-): Promise<string> {
+async function getOrCreateComponentFolder(componentName: string): Promise<string> {
   const folderMetadata = {
     name: componentName,
     mimeType: "application/vnd.google-apps.folder",
@@ -64,17 +62,14 @@ async function getOrCreateComponentFolder(
   };
 
   try {
-    // Verificar se a pasta já existe
     const res = await drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${componentName}' and '${componentesFolderId}' in parents and trashed=false`,
       fields: "files(id, name)",
     });
 
     if (res.data.files && res.data.files.length > 0) {
-      // Retorna o ID da pasta existente
       return res.data.files[0].id!;
     } else {
-      // Cria uma nova pasta
       const folder = await drive.files.create({
         resource: folderMetadata,
         fields: "id",
@@ -87,24 +82,20 @@ async function getOrCreateComponentFolder(
   }
 }
 
+
 // Função para fazer upload de um arquivo para o Google Drive e retornar a URL
-async function uploadFile(
-  fileBuffer: Buffer,
-  fileName: string,
-  parentFolderId: string
-): Promise<string> {
+async function uploadFile(fileBuffer: Buffer, fileName: string, parentFolderId: string): Promise<string> {
   const fileMetadata = {
     name: fileName,
     parents: [parentFolderId],
   };
 
-  // Converta o Buffer para um Readable Stream
   const readableStream = new Readable();
   readableStream.push(fileBuffer);
   readableStream.push(null);
 
   const media = {
-    mimeType: "image/jpeg", // Mime type do seu arquivo
+    mimeType: "image/jpeg",
     body: readableStream,
   };
 
@@ -115,7 +106,6 @@ async function uploadFile(
       fields: "id",
     });
 
-    // Adicione este bloco de código após a criação do arquivo
     await drive.permissions.create({
       fileId: res.data.id,
       requestBody: {
@@ -124,15 +114,13 @@ async function uploadFile(
       },
     });
 
-    console.log("Arquivo carregado com ID:", res.data.id);
-
-    // Retorna a URL do arquivo carregado
     return `https://drive.google.com/uc?id=${res.data.id}`;
   } catch (error) {
     console.error("Erro ao fazer upload do arquivo:", error);
     throw error;
   }
 }
+
 
 // Função para upload de fotos do componente para o Google Drive
 export const uploadFotoComponente = async (req: any, res: any) => {
