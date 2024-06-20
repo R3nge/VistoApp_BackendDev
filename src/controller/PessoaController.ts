@@ -425,10 +425,15 @@ export const buscarPessoas = async (req: Request, res: Response) => {
 export const buscarPessoaPorId = async (req: Request, res: Response) => {
   const { id } = req.params;
 
+  console.log("Recebido ID:", id); // Log para verificar o valor do ID
+
+  if (!id) {
+    return res.status(HttpStatus.BadRequest).json({ mensagem: "ID é necessário" });
+  }
+
   try {
     const pessoa = await prisma.pessoa.findUnique({
       where: { id },
-
       include: {
         endereco: true,
       },
