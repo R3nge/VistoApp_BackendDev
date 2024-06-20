@@ -427,9 +427,9 @@ export const buscarPessoaPorId = async (req: Request, res: Response) => {
 
   console.log("Recebido ID:", id); // Log para verificar o valor do ID
 
-  if (!id) {
-    return res.status(HttpStatus.BadRequest).json({ mensagem: "ID é necessário" });
-  }
+  // if (!id) {
+  //   return res.status(HttpStatus.BadRequest).json({ mensagem: "ID é necessário" });
+  // }
 
   try {
     const pessoa = await prisma.pessoa.findUnique({
