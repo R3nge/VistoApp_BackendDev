@@ -37,130 +37,6 @@ interface DadosPessoa {
   };
 }
 
-// // Função do controlador para gerar PDF para pessoas de um tipo específico
-// export const gerarPDFPessoas = async (req: Request, res: Response) => {
-//   try {
-//     const { tipo } = req.params;
-
-//     // Busca dados das pessoas no banco de dados
-//     const pessoas = await prisma.pessoa.findMany({
-//       where: {
-//         type: tipo as RolePessoa,
-//       },
-//       include: {
-//         endereco: true,
-//       },
-//     });
-
-//     // Verifica se pessoas foram encontradas
-//     if (!pessoas || pessoas.length === 0) {
-//       return res.status(HttpStatus.NaoEncontrado).json({
-//         mensagem: `Nenhuma pessoa do tipo ${tipo} encontrada`,
-//       });
-//     }
-
-//     // Registra as pessoas encontradas
-//     console.log("Pessoas encontradas:", pessoas);
-
-//     // Mapeia os dados para um formato adequado para a geração de PDF
-//     const pessoasParaPDF: DadosPessoa[] = pessoas.map((pessoa) => ({
-//       cpf: pessoa.cpf,
-//       nome: pessoa.name,
-//       tel: pessoa.tel,
-//       email: pessoa.email,
-//       dataNascimento: pessoa.birthDate,
-//       tipo: pessoa.type,
-//       endereco: {
-//         rua: pessoa.endereco.rua,
-//         complemento: pessoa.endereco.complemento,
-//         numero: pessoa.endereco.numero,
-//         bairro: pessoa.endereco.bairro,
-//         cidade: pessoa.endereco.cidade,
-//         estado: pessoa.endereco.estado,
-//         cep: pessoa.endereco.cep,
-//       },
-//     }));
-
-//     // Define o caminho absoluto para o arquivo PDF
-//     const pdfFilePath = path.join(
-//       __dirname,
-//       "..",
-//       "..",
-//       "pdfFiles",
-//       `PessoaPDF_${tipo}.pdf`
-//     );
-
-//     // Gera o PDF e o salva
-//     await gerarPDF(pdfFilePath, pessoasParaPDF);
-
-//     return res.status(HttpStatus.Sucesso).json({
-//       mensagem: `PDF de pessoas do tipo ${tipo} gerado com sucesso`,
-//       caminhoPDF: pdfFilePath,
-//     });
-//   } catch (error) {
-//     console.error(`Erro ao gerar PDF de pessoas`, error);
-//     return res
-//       .status(HttpStatus.ErroInternoServidor)
-//       .json({ mensagem: "Erro interno do servidor" });
-//   } finally {
-//     await prisma.$disconnect();
-//   }
-// };
-
-// // Função para gerar PDF a partir dos dados das pessoas
-// async function gerarPDF(filePath: string, pessoas: DadosPessoa[]) {
-//   const pdfDoc = await PDFDocument.create();
-//   for (const pessoa of pessoas) {
-//     await criarPagina(pdfDoc, pessoa);
-//   }
-
-//   // Extrai o diretório do caminho do arquivo
-//   const directory = path.dirname(filePath);
-
-//   // Garante que o diretório exista, criando-o se necessário
-//   await fs.mkdir(directory, { recursive: true });
-
-//   // Salva o PDF no caminho do arquivo especificado
-//   await salvarPDF(filePath, pdfDoc);
-// }
-
-// // Função para criar uma página no PDF para uma pessoa
-// async function criarPagina(pdfDoc: PDFDocument, pessoa: DadosPessoa) {
-//   const page = pdfDoc.addPage();
-//   await adicionarConteudo(page, pessoa, pdfDoc);
-// }
-
-// // Função para adicionar conteúdo a uma página de PDF para uma pessoa
-// async function adicionarConteudo(
-//   page: any,
-//   pessoa: DadosPessoa,
-//   pdfDoc: PDFDocument
-// ) {
-//   const fonte = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-//   const fontSize = 12;
-//   const { height } = page.getSize();
-
-//   const conteudoTexto = `CPF: ${pessoa.cpf}\nNome: ${pessoa.nome}\nTelefone: ${
-//     pessoa.tel
-//   }\nE-mail: ${pessoa.email}\nData de Nascimento: ${
-//     pessoa.dataNascimento
-//   }\nTipo: ${pessoa.tipo}\nEndereço: ${JSON.stringify(pessoa.endereco)}`;
-
-//   page.drawText(conteudoTexto, {
-//     x: 50,
-//     y: height - 50,
-//     size: fontSize,
-//     font: fonte,
-//     color: rgb(0, 0, 0),
-//   });
-// }
-
-// // Função para salvar o PDF em um arquivo
-// async function salvarPDF(filePath: string, pdfDoc: PDFDocument) {
-//   const pdfBytes = await pdfDoc.save();
-//   await fs.writeFile(filePath, pdfBytes);
-// }
-
 // Função para gerar um número aleatório
 function gerarNumeroAleatorio(): number {
   return Math.floor(Math.random() * 10000) + 1;
@@ -422,16 +298,19 @@ export const buscarPessoas = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
+// Função para buscar Vistoriador, Inquilino ou Proprietário por ID
 export const buscarPessoaPorId = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   console.log("Recebido ID:", id); // Log para verificar o valor do ID
 
-  // if (!id) {
-  //   return res.status(HttpStatus.BadRequest).json({ mensagem: "ID é necessário" });
-  // }
+  // Verifica se o ID foi fornecido
+  if (!id) {
+    return res.status(HttpStatus.RequisicaoInvalida).json({ mensagem: "ID é necessário" });
+  }
 
   try {
+    // Busca a pessoa pelo ID
     const pessoa = await prisma.pessoa.findUnique({
       where: { id },
       include: {
@@ -439,16 +318,24 @@ export const buscarPessoaPorId = async (req: Request, res: Response) => {
       },
     });
 
+    // Verifica se a pessoa foi encontrada e se é do tipo desejado
     if (!pessoa) {
       return res.status(HttpStatus.NaoEncontrado).json({ mensagem: "Pessoa não encontrada" });
     }
 
+    // Lista dos tipos permitidos
+    const tiposPermitidos: (keyof typeof RolePessoa)[] = ["Inquilino", "Proprietario", "Vistoriador"];
+    
+    // Verifica se o tipo da pessoa está na lista dos tipos permitidos
+    if (!tiposPermitidos.includes(pessoa.type as keyof typeof RolePessoa)) {
+      return res.status(HttpStatus.RequisicaoInvalida).json({ mensagem: "Tipo de pessoa não é Vistoriador, Inquilino ou Proprietário" });
+    }
+
+    // Retorna a pessoa encontrada
     return res.status(HttpStatus.Sucesso).json(pessoa);
   } catch (error) {
     console.error("Erro ao buscar pessoa por ID", error);
-    return res
-      .status(HttpStatus.ErroInternoServidor)
-      .json({ mensagem: "Erro interno do servidor" });
+    return res.status(HttpStatus.ErroInternoServidor).json({ mensagem: "Erro interno do servidor" });
   } finally {
     await prisma.$disconnect();
   }
@@ -647,6 +534,6 @@ const PessoaController = {
   buscarProprietarios,
   buscarInquilino,
   buscarVistoriadores,
-  buscarPessoaPorId
+  buscarPessoaPorId,
 };
 export default PessoaController;
