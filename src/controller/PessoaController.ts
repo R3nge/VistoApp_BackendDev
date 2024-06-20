@@ -18,24 +18,35 @@ const HttpStatus = {
   ErroInternoServidor: 500,
 };
 
-// Interface definindo a estrutura dos dados para criar uma pessoa
-interface DadosPessoa {
-  cpf: string;
-  nome: string;
-  tel: string; // Aqui, `tel` pode ser um número ou bigint
-  email: string;
-  dataNascimento: Date;
-  tipo: RolePessoa;
-  endereco: {
-    rua: string;
-    complemento: string;
-    numero: number;
-    bairro: string;
-    cidade: string;
-    estado: string;
-    cep: string;
-  };
+// Definição da interface EnderecoPessoa
+interface EnderecoPessoa {
+  id: string;
+  rua: string;
+  complemento: string;
+  numero: number;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  cep: string;
 }
+
+// Definição da interface Pessoa
+interface Pessoa {
+  id: string;
+  cpf: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  email?: string | null;  // email é opcional e pode ser nulo
+  password?: string | null;  // password é opcional e pode ser nulo
+  tel: string;
+  endereco: EnderecoPessoa;
+  enderecoId: string;
+  type: RolePessoa;
+  birthDate: Date;
+  fotos?: string | null;  // fotos é opcional e pode ser nulo
+}
+
 
 // Função para gerar um número aleatório
 function gerarNumeroAleatorio(): number {
@@ -298,7 +309,7 @@ export const buscarPessoas = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
-// Função para buscar Vistoriador, Inquilino ou Proprietário por ID
+
 export const buscarPessoaPorId = async (req: Request, res: Response) => {
   const { id } = req.params;
 
@@ -306,6 +317,7 @@ export const buscarPessoaPorId = async (req: Request, res: Response) => {
 
   // Verifica se o ID foi fornecido
   if (!id) {
+    console.log("ID não fornecido"); // Log para casos onde o ID não é fornecido
     return res.status(HttpStatus.RequisicaoInvalida).json({ mensagem: "ID é necessário" });
   }
 
@@ -318,8 +330,9 @@ export const buscarPessoaPorId = async (req: Request, res: Response) => {
       },
     });
 
-    // Verifica se a pessoa foi encontrada e se é do tipo desejado
+    // Verifica se a pessoa foi encontrada
     if (!pessoa) {
+      console.log("Pessoa não encontrada com o ID:", id); // Log para casos onde a pessoa não é encontrada
       return res.status(HttpStatus.NaoEncontrado).json({ mensagem: "Pessoa não encontrada" });
     }
 
@@ -328,6 +341,7 @@ export const buscarPessoaPorId = async (req: Request, res: Response) => {
     
     // Verifica se o tipo da pessoa está na lista dos tipos permitidos
     if (!tiposPermitidos.includes(pessoa.type as keyof typeof RolePessoa)) {
+      console.log("Tipo de pessoa não permitido:", pessoa.type); // Log para tipos de pessoa não permitidos
       return res.status(HttpStatus.RequisicaoInvalida).json({ mensagem: "Tipo de pessoa não é Vistoriador, Inquilino ou Proprietário" });
     }
 
@@ -340,6 +354,7 @@ export const buscarPessoaPorId = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
+
 export const excluirPessoa = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

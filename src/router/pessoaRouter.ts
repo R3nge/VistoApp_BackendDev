@@ -31,7 +31,7 @@ router.get("/buscarProprietario", async (req, res) => {
   await PessoaController.buscarProprietarios(req, res);
 });
 
-router.get("/pessoa/por-id/:pessoaId", async (req, res) => {
+router.get("/pessoa/por-id/:id", async (req, res) => {
   await PessoaController.buscarPessoaPorId(req, res);
 });
 
