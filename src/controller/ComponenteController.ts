@@ -227,7 +227,7 @@ const getFotosComponente = async (req: Request, res: Response) => {
     // Extrai as URLs das fotos do componente
     const fotoUrls = componente.fotos.map((foto) => foto.url);
 
-    res.status(200).json({ fotos: fotoUrls });
+    res.status(200).json(fotoUrls);
   } catch (error) {
     console.error("Erro ao obter fotos do componente:", error);
     res.status(500).send("Erro interno do servidor.");
