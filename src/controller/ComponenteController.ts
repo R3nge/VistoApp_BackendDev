@@ -84,18 +84,23 @@ async function getOrCreateComponentFolder(componentName: string): Promise<string
 
 
 // Função para fazer upload de um arquivo para o Google Drive e retornar a URL
-async function uploadFile(fileBuffer: Buffer, fileName: string, parentFolderId: string): Promise<string> {
+async function uploadFile(
+  fileBuffer: Buffer,
+  fileName: string,
+  parentFolderId: string
+): Promise<string> {
   const fileMetadata = {
     name: fileName,
     parents: [parentFolderId],
   };
 
+  // Converta o Buffer para um Readable Stream
   const readableStream = new Readable();
   readableStream.push(fileBuffer);
   readableStream.push(null);
 
   const media = {
-    mimeType: "image/jpeg",
+    mimeType: "image/jpeg", // Mime type do seu arquivo
     body: readableStream,
   };
 
@@ -106,6 +111,7 @@ async function uploadFile(fileBuffer: Buffer, fileName: string, parentFolderId: 
       fields: "id",
     });
 
+    // Adicione este bloco de código após a criação do arquivo
     await drive.permissions.create({
       fileId: res.data.id,
       requestBody: {
@@ -114,13 +120,15 @@ async function uploadFile(fileBuffer: Buffer, fileName: string, parentFolderId: 
       },
     });
 
+    console.log("Arquivo carregado com ID:", res.data.id);
+
+    // Retorna a URL do arquivo carregado
     return `https://drive.google.com/uc?id=${res.data.id}`;
   } catch (error) {
     console.error("Erro ao fazer upload do arquivo:", error);
     throw error;
   }
 }
-
 
 // Função para upload de fotos do componente para o Google Drive
 export const uploadFotoComponente = async (req: any, res: any) => {
@@ -196,7 +204,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
   }
 };
 
-const getFotosComponente = async (req: Request, res: Response) => {
+ const getFotosComponente = async (req: Request, res: Response) => {
   const componenteId = req.params.componenteId;
 
   try {
@@ -215,7 +223,16 @@ const getFotosComponente = async (req: Request, res: Response) => {
     // Extrai as URLs das fotos do componente
     const fotoUrls = componente.fotos.map((foto) => foto.url);
 
-    res.status(200).json({ fotos: fotoUrls });
+    // Transforma as URLs do Google Drive para URLs diretas
+    const urlsDiretas = fotoUrls.map((url) => {
+      if (url.includes("drive.google.com")) {
+        const fileId = url.split("/")[5]; // Obtém o ID do arquivo do URL do Google Drive
+        return `https://drive.google.com/uc?id=${fileId}`;
+      }
+      return url; // Se já for uma URL direta, retorna como está
+    });
+
+    res.status(200).json({ fotos: urlsDiretas });
   } catch (error) {
     console.error("Erro ao obter fotos do componente:", error);
     res.status(500).send("Erro interno do servidor.");
