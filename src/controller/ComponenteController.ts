@@ -64,14 +64,17 @@ async function getOrCreateComponentFolder(
   };
 
   try {
+    // Verificar se a pasta já existe
     const res = await drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${componentName}' and '${componentesFolderId}' in parents and trashed=false`,
       fields: "files(id, name)",
     });
 
     if (res.data.files && res.data.files.length > 0) {
+      // Retorna o ID da pasta existente
       return res.data.files[0].id!;
     } else {
+      // Cria uma nova pasta
       const folder = await drive.files.create({
         resource: folderMetadata,
         fields: "id",
@@ -205,7 +208,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
   }
 };
 
-export const getFotosComponente = async (req: Request, res: Response) => {
+const getFotosComponente = async (req: Request, res: Response) => {
   const componenteId = req.params.componenteId;
 
   try {
@@ -221,18 +224,10 @@ export const getFotosComponente = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Componente não encontrado." });
     }
 
-    // Extrai as URLs das fotos do componente e transforma em URLs diretas do Google Drive
-    const urlsDiretas = componente.fotos.map((foto) => {
-      const url = foto.url;
-      if (url.includes("drive.google.com")) {
-        const splitUrl = url.split("/");
-        const fileId = splitUrl[splitUrl.length - 2]; // Obtém o ID do arquivo do URL do Google Drive
-        return `https://drive.google.com/uc?id=${fileId}`;
-      }
-      return url; // Se já for uma URL direta, retorna como está
-    });
+    // Extrai as URLs das fotos do componente
+    const fotoUrls = componente.fotos.map((foto) => foto.url);
 
-    res.status(200).json({ fotos: urlsDiretas });
+    res.status(200).json({ fotos: fotoUrls });
   } catch (error) {
     console.error("Erro ao obter fotos do componente:", error);
     res.status(500).send("Erro interno do servidor.");
