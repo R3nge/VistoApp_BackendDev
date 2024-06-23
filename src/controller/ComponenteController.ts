@@ -60,7 +60,7 @@ async function getOrCreateComponentFolder(
   const folderMetadata = {
     name: componentName,
     mimeType: "application/vnd.google-apps.folder",
-    parents: [componentesFolderId], // Define a pasta pai correta
+    parents: [componentesFolderId],
   };
 
   try {
@@ -95,7 +95,7 @@ async function uploadFile(
 ): Promise<string> {
   const fileMetadata = {
     name: fileName,
-    parents: [parentFolderId], // Adiciona a pasta pai aqui
+    parents: [parentFolderId],
   };
 
   // Converta o Buffer para um Readable Stream
@@ -112,7 +112,7 @@ async function uploadFile(
     const res = await drive.files.create({
       resource: fileMetadata,
       media: media,
-      fields: "id, parents", // Inclui os pais na resposta para verificação
+      fields: "id",
     });
 
     // Adicione este bloco de código após a criação do arquivo
@@ -125,7 +125,6 @@ async function uploadFile(
     });
 
     console.log("Arquivo carregado com ID:", res.data.id);
-    console.log("Pasta do arquivo:", res.data.parents); // Verifica a pasta do arquivo
 
     // Retorna a URL do arquivo carregado
     return `https://drive.google.com/uc?id=${res.data.id}`;
@@ -189,7 +188,6 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       const fotoRecords = fileUrls.map((url) => ({
         id: uuidv4(),
         url,
-        componenteId, // Certifique-se de incluir o componenteId aqui
       }));
 
       // Atualize o registro do componente com as novas fotos
