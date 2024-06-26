@@ -83,18 +83,21 @@ export const getFotosComponente = async (req: Request, res: Response) => {
 
     if (!componente) {
       console.log("Componente não encontrado.");
-      return res
-        .status(HttpStatus.NotFound)
-        .json({ message: "Componente não encontrado." });
+      return res.status(404).json({ message: "Componente não encontrado." });
     }
 
     console.log("Fotos encontradas para o componente:", componente.fotos);
-    res.status(HttpStatus.Success).json(componente.fotos);
+    // Retorna apenas os dados necessários para exibir no front-end
+    const fotosParaExibir = componente.fotos.map((foto) => ({
+      id: foto.id,
+      base64: foto.base64,
+      mimetype: foto.mimetype,
+    }));
+
+    res.status(200).json(fotosParaExibir);
   } catch (error) {
     console.error("Erro ao obter fotos do componente:", error);
-    res
-      .status(HttpStatus.InternalServerError)
-      .send("Erro interno do servidor.");
+    res.status(500).send("Erro interno do servidor.");
   }
 };
 
