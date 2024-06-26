@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../database/prisma";
 import { v4 as uuidv4 } from "uuid";
 import multer from "multer";
+import { Prisma } from "@prisma/client";
 
 const HttpStatus = {
   Success: 200,
@@ -16,8 +17,6 @@ const HttpStatus = {
 const upload = multer();
 // Função para fazer upload de fotos do componente
 
-// Função para fazer upload de fotos do componente
-// Função para fazer upload de fotos do componente
 export const uploadFotoComponente = async (req: Request, res: Response) => {
   try {
     const { componenteId } = req.params;
@@ -43,35 +42,25 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
       return res.status(404).send("Componente não encontrado.");
     }
 
-    const fotoRecords = files.map((file) => ({
-      id: uuidv4(),
-      base64: file.buffer.toString("base64"),
-      mimetype: file.mimetype,
-      componenteId,
-    }));
+    const fotoRecords: Prisma.FotoComponenteCreateManyInput[] = files.map(
+      (file) => ({
+        id: uuidv4(),
+        base64: file.buffer.toString("base64"),
+        mimetype: file.mimetype,
+        componenteId: componenteId, // Adicionando o componenteId aqui
+      })
+    );
 
-    // Atualizar o registro do componente com as novas fotos
-    const componente = await prisma.componente.update({
-      where: { id: componenteId },
-      data: {
-        fotos: {
-          createMany: {
-            data: fotoRecords,
-          },
-        },
-      },
-      include: {
-        fotos: true,
-      },
+    // Cria as novas fotos para o componente
+    const fotosCriadas = await prisma.fotoComponente.createMany({
+      data: fotoRecords,
     });
 
-    console.log(
-      "Fotos atualizadas com sucesso para o componente:",
-      componenteId
-    );
+    console.log("Fotos criadas com sucesso:", fotosCriadas);
+
     res
       .status(200)
-      .json({ componente, message: "Arquivos carregados com sucesso." });
+      .json({ fotosCriadas, message: "Arquivos carregados com sucesso." });
   } catch (error) {
     console.error("Erro durante o processamento dos arquivos:", error);
     res.status(500).send("Erro interno do servidor.");
