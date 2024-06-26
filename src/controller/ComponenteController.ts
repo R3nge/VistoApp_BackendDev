@@ -1,224 +1,68 @@
 import { Request, Response } from "express";
 import prisma from "../../database/prisma";
 import { v4 as uuidv4 } from "uuid";
-import dotenv from "dotenv";
-import { Readable } from "stream";
+import multer from "multer";
 
-const { google } = require("googleapis");
+const HttpStatus = {
+  Success: 200,
+  Created: 201,
+  BadRequest: 400,
+  NotFound: 404,
+  UnprocessableEntity: 422,
+  InternalServerError: 500,
+};
 
-// Carregar variáveis de ambiente do arquivo .env
-dotenv.config();
-
-// Verifique se todas as variáveis de ambiente necessárias estão definidas
-const requiredEnvVars = [
-  "TYPE",
-  "PROJECT_ID",
-  "PRIVATE_KEY_ID",
-  "PRIVATE_KEY",
-  "CLIENT_EMAIL",
-  "CLIENT_ID",
-  "AUTH_URI",
-  "TOKEN_URI",
-  "AUTH_PROVIDER_X509_CERT_URL",
-  "CLIENT_X509_CERT_URL",
-];
-
-requiredEnvVars.forEach((envVar) => {
-  if (!process.env[envVar]) {
-    throw new Error(`Falta a variável de ambiente necessária: ${envVar}`);
-  }
-});
-
-// Defina a autenticação condicionalmente
-let auth;
-auth = new google.auth.GoogleAuth({
-  credentials: {
-    type: process.env.TYPE!,
-    project_id: process.env.PROJECT_ID!,
-    private_key_id: process.env.PRIVATE_KEY_ID!,
-    private_key: process.env.PRIVATE_KEY!.replace(/\\n/g, "\n"),
-    client_email: process.env.CLIENT_EMAIL!,
-    client_id: process.env.CLIENT_ID!,
-    auth_uri: process.env.AUTH_URI!,
-    token_uri: process.env.TOKEN_URI!,
-    auth_provider_x509_cert_url: process.env.AUTH_PROVIDER_X509_CERT_URL!,
-    client_x509_cert_url: process.env.CLIENT_X509_CERT_URL!,
-  },
-  scopes: "https://www.googleapis.com/auth/drive",
-});
-
-// Crie um cliente OAuth2
-const drive = google.drive({ version: "v3", auth });
-
-// ID da pasta "Componentes" no Google Drive
-const componentesFolderId = "1kgSXmtimzHp_U_l9ngffNG4Hyyptj09F";
-
-// Função para verificar se a pasta do componente já existe, e criar se não existir
-async function getOrCreateComponentFolder(
-  componentName: string
-): Promise<string> {
-  const folderMetadata = {
-    name: componentName,
-    mimeType: "application/vnd.google-apps.folder",
-    parents: [componentesFolderId],
-  };
-
-  try {
-    // Verificar se a pasta já existe
-    const res = await drive.files.list({
-      q: `mimeType='application/vnd.google-apps.folder' and name='${componentName}' and '${componentesFolderId}' in parents and trashed=false`,
-      fields: "files(id, name)",
-    });
-
-    if (res.data.files && res.data.files.length > 0) {
-      // Retorna o ID da pasta existente
-      return res.data.files[0].id!;
-    } else {
-      // Cria uma nova pasta
-      const folder = await drive.files.create({
-        resource: folderMetadata,
-        fields: "id",
-      });
-      return folder.data.id!;
-    }
-  } catch (error) {
-    console.error("Erro ao verificar ou criar a pasta do componente:", error);
-    throw error;
-  }
-}
-
-// Função para fazer upload de um arquivo para o Google Drive e retornar a URL
-async function uploadFile(
-  fileBuffer: Buffer,
-  fileName: string,
-  parentFolderId: string
-): Promise<string> {
-  const fileMetadata = {
-    name: fileName,
-    parents: [parentFolderId],
-  };
-
-  // Converta o Buffer para um Readable Stream
-  const readableStream = new Readable();
-  readableStream.push(fileBuffer);
-  readableStream.push(null);
-
-  const media = {
-    mimeType: "image/jpeg", // Mime type do seu arquivo
-    body: readableStream,
-  };
-
-  try {
-    const res = await drive.files.create({
-      resource: fileMetadata,
-      media: media,
-      fields: "id",
-    });
-
-    // Adicione este bloco de código após a criação do arquivo
-    await drive.permissions.create({
-      fileId: res.data.id,
-      requestBody: {
-        role: "reader",
-        type: "anyone",
-      },
-    });
-
-    console.log("Arquivo carregado com ID:", res.data.id);
-
-    // Retorna a URL do arquivo carregado
-    return `https://drive.google.com/uc?id=${res.data.id}`;
-  } catch (error) {
-    console.error("Erro ao fazer upload do arquivo:", error);
-    throw error;
-  }
-}
-
-// Função para upload de fotos do componente para o Google Drive
+// Função para fazer upload de fotos do componente
 export const uploadFotoComponente = async (req: any, res: any) => {
-  console.log("Iniciando upload de fotos...");
   try {
     const { componenteId, tipo } = req.params;
-    const { vistoriaId, nome } = req.body; // Certifique-se de passar vistoriaId e nome no corpo da solicitação
-
-    console.log(`ID do Componente: ${componenteId}`);
-    console.log(`Nome do Componente: ${tipo}`);
+    const { vistoriaId, nome } = req.body;
 
     if (!req.files || !Array.isArray(req.files)) {
-      console.error("Nenhum arquivo foi enviado.");
-      return res.status(400).send("Nenhum arquivo foi enviado.");
+      return res.status(HttpStatus.BadRequest).send("Nenhum arquivo foi enviado.");
     }
 
     const files = req.files as Express.Multer.File[];
-    console.log(`Número de arquivos recebidos: ${files.length}`);
 
-    try {
-      // Verifica se o componente existe
-      const existingComponente = await prisma.componente.findUnique({
-        where: { id: componenteId },
-      });
+    // Verifica se o componente existe
+    const existingComponente = await prisma.componente.findUnique({
+      where: { id: componenteId },
+    });
 
-      if (!existingComponente) {
-        console.error("Componente não encontrado.");
-        return res.status(404).send("Componente não encontrado.");
-      }
-
-      // Obtém ou cria a pasta do componente
-      const componentFolderId = await getOrCreateComponentFolder(tipo);
-
-      const fileUrls: string[] = []; // Inicializa a variável fileUrls como um array vazio
-
-      for (const file of files) {
-        const uniqueName = `${componenteId}-${vistoriaId}-${nome}-${Date.now()}-${
-          file.originalname
-        }`; // Nome completo da foto
-
-        // Faz o upload do arquivo para o Google Drive e obtém a URL
-        const url = await uploadFile(
-          file.buffer,
-          uniqueName,
-          componentFolderId
-        );
-
-        // Adiciona a URL do arquivo ao array fileUrls
-        fileUrls.push(url);
-      }
-
-      // Cria registros para as novas fotos no banco de dados
-      const fotoRecords = fileUrls.map((url) => ({
-        id: uuidv4(),
-        url,
-      }));
-
-      // Atualize o registro do componente com as novas fotos
-      const componente = await prisma.componente.update({
-        where: { id: componenteId },
-        data: {
-          fotos: {
-            create: fotoRecords,
-          },
-        },
-        include: {
-          fotos: true,
-        },
-      });
-
-      console.log("Atualização do componente concluída:", componente);
-      res
-        .status(200)
-        .json({ componente, message: "Arquivos carregados com sucesso." });
-    } catch (error) {
-      console.error("Erro durante o processamento dos arquivos:", error);
-      res.status(500).send("Erro interno do servidor.");
+    if (!existingComponente) {
+      return res.status(HttpStatus.NotFound).send("Componente não encontrado.");
     }
-  } catch (disconnectError) {
-    console.error("Erro ao desconectar do banco de dados:", disconnectError);
-    res.status(500).send("Erro interno do servidor.");
+
+    const fotoRecords = files.map(file => ({
+      id: uuidv4(),
+      base64: file.buffer.toString('base64'),
+      mimetype: file.mimetype,
+      componenteId,
+    }));
+
+    // Atualizar o registro do componente com as novas fotos
+    const componente = await prisma.componente.update({
+      where: { id: componenteId },
+      data: {
+        fotos: {
+          create: fotoRecords,
+        },
+      },
+      include: {
+        fotos: true,
+      },
+    });
+
+    res.status(HttpStatus.Success).json({ componente, message: "Arquivos carregados com sucesso." });
+  } catch (error) {
+    console.error("Erro durante o processamento dos arquivos:", error);
+    res.status(HttpStatus.InternalServerError).send("Erro interno do servidor.");
   }
 };
 
-const getFotosComponente = async (req: Request, res: Response) => {
-  const componenteId = req.params.componenteId;
+// Função para buscar as fotos de um componente
+export const getFotosComponente = async (req: Request, res: Response) => {
+  const { componenteId } = req.params;
 
   try {
     // Busca o componente pelo ID junto com suas fotos associadas
@@ -230,28 +74,14 @@ const getFotosComponente = async (req: Request, res: Response) => {
     });
 
     if (!componente) {
-      return res.status(404).json({ message: "Componente não encontrado." });
+      return res.status(HttpStatus.NotFound).json({ message: "Componente não encontrado." });
     }
 
-    // Extrai as URLs das fotos do componente
-    const fotoUrls = componente.fotos.map((foto) => foto.url);
-
-    res.status(200).json(fotoUrls);
+    res.status(HttpStatus.Success).json(componente.fotos);
   } catch (error) {
     console.error("Erro ao obter fotos do componente:", error);
-    res.status(500).send("Erro interno do servidor.");
+    res.status(HttpStatus.InternalServerError).send("Erro interno do servidor.");
   }
-};
-
-dotenv.config();
-
-const HttpStatus = {
-  Success: 200,
-  Created: 201,
-  BadRequest: 400,
-  NotFound: 404,
-  UnprocessableEntity: 422,
-  InternalServerError: 500,
 };
 
 const gerarIdUnico = async (prefixo: string): Promise<string> => {

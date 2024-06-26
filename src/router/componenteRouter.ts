@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { ComponenteController } from "../controller";
 import multer from "multer";
+import {
+  uploadFotoComponente,
+  getFotosComponente,
+} from "../controller/ComponenteController";
 
 const router = Router();
 
@@ -34,19 +38,17 @@ router.get("/buscarComponentesPorComodo/:comodoId", async (req, res) => {
 });
 
 // Nova rota para upload de fotos
-// Altere upload.array('fotos', 10) para upload.any()
 router.put(
   "/uploadFotoComponente/:componenteId/:tipo",
   upload.any(),
   async (req, res) => {
-    return ComponenteController.uploadFotoComponente(req, res);
+    return uploadFotoComponente(req, res);
   }
 );
 
 // Rota para buscar as fotos de um componente
-
 router.get("/getFotosComponente/:componenteId/:tipo", async (req, res) => {
-  ComponenteController.getFotosComponente(req, res);
+  return getFotosComponente(req, res);
 });
 
 export default router;
