@@ -12,17 +12,28 @@ const HttpStatus = {
   InternalServerError: 500,
 };
 
+// Configuração do Multer para upload
+const upload = multer();
 // Função para fazer upload de fotos do componente
 export const uploadFotoComponente = async (req: any, res: any) => {
   try {
     const { componenteId, tipo } = req.params;
     const { vistoriaId, nome } = req.body;
 
+    console.log("Iniciando upload de fotos...");
+    console.log("ID do Componente:", componenteId);
+    console.log("Nome do Componente:", nome);
+
     if (!req.files || !Array.isArray(req.files)) {
-      return res.status(HttpStatus.BadRequest).send("Nenhum arquivo foi enviado.");
+      console.log("Nenhum arquivo foi enviado.");
+      return res
+        .status(HttpStatus.BadRequest)
+        .send("Nenhum arquivo foi enviado.");
     }
 
     const files = req.files as Express.Multer.File[];
+
+    console.log("Número de arquivos recebidos:", files.length);
 
     // Verifica se o componente existe
     const existingComponente = await prisma.componente.findUnique({
@@ -30,15 +41,20 @@ export const uploadFotoComponente = async (req: any, res: any) => {
     });
 
     if (!existingComponente) {
+      console.log("Componente não encontrado.");
       return res.status(HttpStatus.NotFound).send("Componente não encontrado.");
     }
 
-    const fotoRecords = files.map(file => ({
-      id: uuidv4(),
-      base64: file.buffer.toString('base64'),
-      mimetype: file.mimetype,
-      componenteId,
-    }));
+    const fotoRecords = files.map((file) => {
+      const record = {
+        id: uuidv4(),
+        base64: file.buffer.toString("base64"),
+        mimetype: file.mimetype,
+        componenteId,
+      };
+      console.log("Arquivo carregado com ID:", record.id);
+      return record;
+    });
 
     // Atualizar o registro do componente com as novas fotos
     const componente = await prisma.componente.update({
@@ -53,16 +69,26 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       },
     });
 
-    res.status(HttpStatus.Success).json({ componente, message: "Arquivos carregados com sucesso." });
+    console.log(
+      "Fotos atualizadas com sucesso para o componente:",
+      componenteId
+    );
+    res
+      .status(HttpStatus.Success)
+      .json({ componente, message: "Arquivos carregados com sucesso." });
   } catch (error) {
     console.error("Erro durante o processamento dos arquivos:", error);
-    res.status(HttpStatus.InternalServerError).send("Erro interno do servidor.");
+    res
+      .status(HttpStatus.InternalServerError)
+      .send("Erro interno do servidor.");
   }
 };
 
 // Função para buscar as fotos de um componente
 export const getFotosComponente = async (req: Request, res: Response) => {
   const { componenteId } = req.params;
+
+  console.log("Buscando fotos para o componente ID:", componenteId);
 
   try {
     // Busca o componente pelo ID junto com suas fotos associadas
@@ -74,13 +100,19 @@ export const getFotosComponente = async (req: Request, res: Response) => {
     });
 
     if (!componente) {
-      return res.status(HttpStatus.NotFound).json({ message: "Componente não encontrado." });
+      console.log("Componente não encontrado.");
+      return res
+        .status(HttpStatus.NotFound)
+        .json({ message: "Componente não encontrado." });
     }
 
+    console.log("Fotos encontradas para o componente:", componente.fotos);
     res.status(HttpStatus.Success).json(componente.fotos);
   } catch (error) {
     console.error("Erro ao obter fotos do componente:", error);
-    res.status(HttpStatus.InternalServerError).send("Erro interno do servidor.");
+    res
+      .status(HttpStatus.InternalServerError)
+      .send("Erro interno do servidor.");
   }
 };
 
