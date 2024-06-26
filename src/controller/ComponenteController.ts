@@ -15,24 +15,22 @@ const HttpStatus = {
 // Configuração do Multer para upload
 const upload = multer();
 // Função para fazer upload de fotos do componente
-export const uploadFotoComponente = async (req: any, res: any) => {
+
+// Função para fazer upload de fotos do componente
+export const uploadFotoComponente = async (req: Request, res: Response) => {
   try {
     const { componenteId, tipo } = req.params;
-    const { vistoriaId, nome } = req.body;
 
     console.log("Iniciando upload de fotos...");
     console.log("ID do Componente:", componenteId);
-    console.log("Nome do Componente:", nome);
+    console.log("Nome do Componente:", tipo);
 
     if (!req.files || !Array.isArray(req.files)) {
       console.log("Nenhum arquivo foi enviado.");
-      return res
-        .status(HttpStatus.BadRequest)
-        .send("Nenhum arquivo foi enviado.");
+      return res.status(400).send("Nenhum arquivo foi enviado.");
     }
 
     const files = req.files as Express.Multer.File[];
-
     console.log("Número de arquivos recebidos:", files.length);
 
     // Verifica se o componente existe
@@ -42,7 +40,7 @@ export const uploadFotoComponente = async (req: any, res: any) => {
 
     if (!existingComponente) {
       console.log("Componente não encontrado.");
-      return res.status(HttpStatus.NotFound).send("Componente não encontrado.");
+      return res.status(404).send("Componente não encontrado.");
     }
 
     const fotoRecords = files.map((file) => {
@@ -69,21 +67,13 @@ export const uploadFotoComponente = async (req: any, res: any) => {
       },
     });
 
-    console.log(
-      "Fotos atualizadas com sucesso para o componente:",
-      componenteId
-    );
-    res
-      .status(HttpStatus.Success)
-      .json({ componente, message: "Arquivos carregados com sucesso." });
+    console.log("Fotos atualizadas com sucesso para o componente:", componenteId);
+    res.status(200).json({ componente, message: "Arquivos carregados com sucesso." });
   } catch (error) {
     console.error("Erro durante o processamento dos arquivos:", error);
-    res
-      .status(HttpStatus.InternalServerError)
-      .send("Erro interno do servidor.");
+    res.status(500).send("Erro interno do servidor.");
   }
 };
-
 // Função para buscar as fotos de um componente
 export const getFotosComponente = async (req: Request, res: Response) => {
   const { componenteId } = req.params;

@@ -41,9 +41,7 @@ router.get("/buscarComponentesPorComodo/:comodoId", async (req, res) => {
 router.put(
   "/uploadFotoComponente/:componenteId/:tipo",
   upload.any(),
-  async (req, res) => {
-    return uploadFotoComponente(req, res);
-  }
+  uploadFotoComponente
 );
 
 // Rota para buscar as fotos de um componente
