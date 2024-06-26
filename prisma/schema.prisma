@@ -91,13 +91,6 @@ model Comodo {
   componente Componente[]
 }
 
-model FotoComponente {
-  id           String     @id @default(uuid())
-  componente   Componente @relation(fields: [componenteId], references: [id])
-  componenteId String
-  base64       String // Armazenando a imagem como base64
-  mimetype     String // Armazenando o tipo do arquivo (image/jpeg, image/png, etc)
-}
 
 model FotoImovel {
   id       String @id @unique @default(uuid())
@@ -127,6 +120,14 @@ model Componente {
   estado     Estado
   material   Material
   fotos      FotoComponente[] // Relacionamento com o modelo Foto
+}
+
+model FotoComponente {
+  id           String     @id @default(uuid())
+  componente   Componente @relation(fields: [componenteId], references: [id])
+  componenteId String
+  base64       String // Armazenando a imagem como base64
+  mimetype     String // Armazenando o tipo do arquivo (image/jpeg, image/png, etc)
 }
 
 model ItemPrincipal {

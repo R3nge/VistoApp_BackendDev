@@ -17,15 +17,15 @@ const upload = multer();
 // Função para fazer upload de fotos do componente
 
 // Função para fazer upload de fotos do componente
+// Função para fazer upload de fotos do componente
 export const uploadFotoComponente = async (req: Request, res: Response) => {
   try {
-    const { componenteId, tipo } = req.params;
+    const { componenteId } = req.params;
 
     console.log("Iniciando upload de fotos...");
     console.log("ID do Componente:", componenteId);
-    console.log("Nome do Componente:", tipo);
 
-    if (!req.files || !Array.isArray(req.files)) {
+    if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
       console.log("Nenhum arquivo foi enviado.");
       return res.status(400).send("Nenhum arquivo foi enviado.");
     }
@@ -43,23 +43,21 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
       return res.status(404).send("Componente não encontrado.");
     }
 
-    const fotoRecords = files.map((file) => {
-      const record = {
-        id: uuidv4(),
-        base64: file.buffer.toString("base64"),
-        mimetype: file.mimetype,
-        componenteId,
-      };
-      console.log("Arquivo carregado com ID:", record.id);
-      return record;
-    });
+    const fotoRecords = files.map((file) => ({
+      id: uuidv4(),
+      base64: file.buffer.toString("base64"),
+      mimetype: file.mimetype,
+      componenteId,
+    }));
 
     // Atualizar o registro do componente com as novas fotos
     const componente = await prisma.componente.update({
       where: { id: componenteId },
       data: {
         fotos: {
-          create: fotoRecords,
+          createMany: {
+            data: fotoRecords,
+          },
         },
       },
       include: {
@@ -67,8 +65,13 @@ export const uploadFotoComponente = async (req: Request, res: Response) => {
       },
     });
 
-    console.log("Fotos atualizadas com sucesso para o componente:", componenteId);
-    res.status(200).json({ componente, message: "Arquivos carregados com sucesso." });
+    console.log(
+      "Fotos atualizadas com sucesso para o componente:",
+      componenteId
+    );
+    res
+      .status(200)
+      .json({ componente, message: "Arquivos carregados com sucesso." });
   } catch (error) {
     console.error("Erro durante o processamento dos arquivos:", error);
     res.status(500).send("Erro interno do servidor.");
