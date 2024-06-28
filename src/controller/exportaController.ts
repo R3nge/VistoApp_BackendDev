@@ -185,7 +185,6 @@ function breakTextIntoLines(
 
   return lines;
 }
-
 async function criarBodyPDF(
   page: any,
   pdfDoc: PDFDocument,
@@ -273,7 +272,9 @@ async function criarBodyPDF(
 
       // Adicionar imagens dos componentes
       for (const componente of comodo.componente) {
-        for (const foto of componente.fotos) {
+        // Certifique-se de que componente.fotos é um array
+        const fotos = componente.fotos || [];
+        for (const foto of fotos) {
           const fotoBase64 = foto.base64;
           const fotoImageEmbed = await pdfDoc.embedPng(fotoBase64);
           const imageWidth = 150; // Ajuste conforme necessário
@@ -344,7 +345,11 @@ async function exportarVistoriaParaPDF(req: Request, res: Response) {
           include: {
             comodo: {
               include: {
-                componente: true,
+                componente: {
+                  include: {
+                    fotos: true, // Inclui as fotos dos componentes
+                  },
+                },
               },
             },
           },
