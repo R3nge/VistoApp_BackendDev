@@ -185,6 +185,7 @@ function breakTextIntoLines(
 
   return lines;
 }
+
 async function criarBodyPDF(
   page: any,
   pdfDoc: PDFDocument,
@@ -245,66 +246,53 @@ async function criarBodyPDF(
 
       // Adiciona o texto à página
       for (const line of textLines) {
-        // Verifica se é o texto do cômodo ou dos componentes para aplicar as cores e fontes adequadas
-        if (line.includes(comodo.tipo)) {
-          page.drawText(line, {
-            x: 50,
-            y: yOffset,
-            size: fontSize,
-            font: fonteCmodo, // Usa a fonte do cômodo
-            color: rgb(corTextoCmodo[1], corTextoCmodo[1], corTextoCmodo[2]), // Usa a cor do cômodo
-          });
-        } else {
-          page.drawText(line, {
-            x: 50,
-            y: yOffset,
-            size: fontSize,
-            font: fonteComponente, // Usa a fonte do componente
-            color: rgb(
-              corTextoComponente[0],
-              corTextoComponente[1],
-              corTextoComponente[2]
-            ), // Usa a cor do componente
-          });
-        }
+        // Verifica se a linha está em negrito
+        const isBold = tiposComponentes.some((tipo) => line.includes(tipo));
+        page.drawText(line, {
+          x: 50, // Ajuste a posição conforme necessário
+          y: yOffset,
+          size: fontSize,
+          font: isBold ? fonteCmodo : fonteComponente,
+          color: isBold
+            ? rgb(corTextoCmodo[0], corTextoCmodo[1], corTextoCmodo[2])
+            : rgb(
+                corTextoComponente[0],
+                corTextoComponente[1],
+                corTextoComponente[2]
+              ),
+        });
         yOffset -= lineHeight;
       }
+    }
 
-      // Adicionar imagens dos componentes
+    if (comodo.componente) {
       for (const componente of comodo.componente) {
-        // Certifique-se de que componente.fotos é um array
-        const fotos = componente.fotos || [];
-        for (const foto of fotos) {
-          const fotoBase64 = foto.base64;
-          const fotoImageEmbed = await pdfDoc.embedPng(fotoBase64);
-          const imageWidth = 150; // Ajuste conforme necessário
-          const imageHeight = 150; // Ajuste conforme necessário
+        if (componente.fotos && componente.fotos.length > 0) {
+          for (const foto of componente.fotos) {
+            // Converta a string Base64 para um buffer de imagem
+            const bufferFoto = Buffer.from(foto.base64, "base64");
 
-          // Verifica se há espaço suficiente na página atual para a imagem
-          if (yOffset - imageHeight < 50) {
-            page = pdfDoc.addPage();
-            yOffset = page.getHeight() - 50; // 50 é uma margem de segurança
+            const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
+            const { width, height } = fotoEmbed.scale(0.5);
+
+            // Verifique se há espaço suficiente na página atual para a foto
+            if (yOffset - height < 50) {
+              // Cria uma nova página se não houver espaço suficiente
+              page = pdfDoc.addPage();
+              yOffset = page.getHeight() - 50; // 50 é uma margem de segurança
+            }
+
+            page.drawImage(fotoEmbed, {
+              x: 50,
+              y: yOffset - height,
+              width,
+              height,
+            });
+
+            yOffset -= height + 20; // Adicione espaço entre as fotos
           }
-
-          page.drawImage(fotoImageEmbed, {
-            x: 50,
-            y: yOffset - imageHeight,
-            width: imageWidth,
-            height: imageHeight,
-          });
-          yOffset -= imageHeight + 10; // Ajuste o espaço entre as imagens
         }
       }
-    } else {
-      comodoText += ` Sem componentes registrados. `;
-      page.drawText(comodoText, {
-        x: 50,
-        y: yOffset,
-        size: fontSize,
-        font: fonteCmodo, // Usa a fonte do cômodo
-        color: rgb(corTextoCmodo[0], corTextoCmodo[1], corTextoCmodo[2]), // Usa a cor do cômodo
-      });
-      yOffset -= lineHeight;
     }
   }
 }
