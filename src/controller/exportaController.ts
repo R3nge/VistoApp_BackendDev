@@ -3,16 +3,8 @@ import fs from "fs/promises";
 import path from "path";
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  ImageRun,
-  HeadingLevel,
-} from "docx";
 import prisma from "../../database/prisma";
-import { TipoVistoria } from "@prisma/client";
+import { FotoComponente, TipoVistoria } from "@prisma/client";
 
 interface DadosVistoria {
   id: string;
@@ -30,12 +22,17 @@ interface DadosVistoria {
       numero: number;
       tipo: string;
       componente: {
-        [x: string]: string;
         tipo: string;
         estado: string;
         material: string;
         cor: string;
         obs: string;
+        fotos: {
+          id: string;
+          componenteId: string;
+          base64: string;
+          mimetype: string;
+        }[]; // Adicione um campo para as fotos dos componentes
       }[];
     }[];
   };
@@ -273,6 +270,30 @@ async function criarBodyPDF(
         }
         yOffset -= lineHeight;
       }
+
+      // Adicionar imagens dos componentes
+      for (const componente of comodo.componente) {
+        for (const foto of componente.fotos) {
+          const fotoBase64 = foto.base64;
+          const fotoImageEmbed = await pdfDoc.embedPng(fotoBase64);
+          const imageWidth = 150; // Ajuste conforme necessário
+          const imageHeight = 150; // Ajuste conforme necessário
+
+          // Verifica se há espaço suficiente na página atual para a imagem
+          if (yOffset - imageHeight < 50) {
+            page = pdfDoc.addPage();
+            yOffset = page.getHeight() - 50; // 50 é uma margem de segurança
+          }
+
+          page.drawImage(fotoImageEmbed, {
+            x: 50,
+            y: yOffset - imageHeight,
+            width: imageWidth,
+            height: imageHeight,
+          });
+          yOffset -= imageHeight + 10; // Ajuste o espaço entre as imagens
+        }
+      }
     } else {
       comodoText += ` Sem componentes registrados. `;
       page.drawText(comodoText, {
@@ -361,153 +382,6 @@ async function exportarVistoriaParaPDF(req: Request, res: Response) {
   }
 }
 
-async function exportarVistoriaParaDOCX(req: Request, res: Response) {
-  const { id } = req.params;
-
-  try {
-    const vistoriaCompleta = await prisma.vistoria.findUnique({
-      where: { id },
-      include: {
-        imovel: {
-          include: {
-            comodo: {
-              include: {
-                componente: true,
-              },
-            },
-          },
-        },
-        vistoriador: true, // Inclui o vistoriador associado à vistoria
-      },
-    });
-
-    if (!vistoriaCompleta) {
-      return res
-        .status(HttpStatus.NaoEncontrado)
-        .json({ mensagem: "Vistoria não encontrada." });
-    }
-
-    const docBuffer = await criarDocumentoDOCX(vistoriaCompleta);
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "");
-    const filename = `vistoria_${id}_${timestamp}.docx`;
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    );
-    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
-    res.setHeader("Content-Length", docBuffer.length);
-
-    res.end(docBuffer); // Envie o conteúdo do arquivo DOCX como resposta
-  } catch (error) {
-    console.error("Erro ao exportar vistoria para DOCX:", error);
-    return res
-      .status(HttpStatus.ErroInternoServidor)
-      .json({ error: "Erro interno ao exportar vistoria para DOCX" });
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-////
-async function criarDocumentoDOCX(vistoria: DadosVistoria) {
-  console.log("Iniciando criação do documento DOCX...");
-
-  try {
-    const doc = new Document({
-      sections: [
-        {
-          properties: {},
-          children: [
-            // Inserir imagem
-            new Paragraph({
-              children: [
-                new ImageRun({
-                  data: await fs.readFile(
-                    path.join(__dirname, "..", "..", "images", "Sollologo.png")
-                  ),
-                  transformation: {
-                    width: 150, // Ajuste a largura conforme necessário
-                    height: 150, // Ajuste a altura conforme necessário
-                  },
-                }),
-              ],
-              alignment: "center",
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: `Vistoria de Locação de Imóvel - Residencial`,
-                  bold: true,
-                  size: 30,
-                }),
-              ],
-              alignment: "center",
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: `Data: ${formatarData(
-                    vistoria.data
-                  )} Fotos: 0 Vistoriador: ${vistoria.vistoriador.firstName} ${
-                    vistoria.vistoriador.middleName
-                  }`,
-                  size: 25,
-                }),
-              ],
-              alignment: "center",
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: `Rua: ${vistoria.imovel.rua} , N° ${vistoria.imovel.numero} , ${vistoria.imovel.complemento} , ${vistoria.imovel.bairro} , ${vistoria.imovel.cidade}/${vistoria.imovel.estado} , CEP: ${vistoria.imovel.cep}.`,
-                  size: 25,
-                  bold: true,
-                }),
-              ],
-              alignment: "center",
-            }),
-            ...(vistoria.imovel.comodo || []).map((comodo) => {
-              const comodoText = `${comodo.numero}. ${comodo.tipo}`;
-              const componentesText =
-                (comodo.componente || []).length > 0
-                  ? comodo.componente
-                      .map(
-                        (componente) =>
-                          `${componente.tipo}: ${componente.material}, ${
-                            componente.cor
-                          }, ${componente.estado}${
-                            componente.obs ? ` OBS:${componente.obs}` : ""
-                          }`
-                      )
-                      .join("; ")
-                  : "Sem componentes registrados.";
-              return new Paragraph({
-                children: [
-                  new TextRun({
-                    text: `${comodoText} ${componentesText}`,
-                    size: 30,
-                  }),
-                ],
-              });
-            }),
-          ],
-        },
-      ],
-      title: `Vistoria${vistoria.id}`,
-    });
-
-    const buffer = await Packer.toBuffer(doc);
-
-    console.log("Documento DOCX criado com sucesso.");
-    return buffer;
-  } catch (error) {
-    console.error("Erro ao criar documento DOCX:", error);
-    throw error;
-  }
-}
-
 function formatarData(data: Date) {
   const dia = String(data.getDate()).padStart(2, "0");
   const mes = String(data.getMonth() + 1).padStart(2, "0");
@@ -520,19 +394,8 @@ async function salvarPDF(filePath: string, pdfDoc: PDFDocument) {
   await fs.writeFile(filePath, pdfBytes);
 }
 
-async function salvarDOCX(filePath: string, buffer: Buffer) {
-  try {
-    await fs.writeFile(filePath, buffer);
-    console.log("DOCX salvo com sucesso em:", filePath);
-  } catch (error) {
-    console.error("Erro ao salvar DOCX:", error);
-    throw error;
-  }
-}
-
 const VistoriaController = {
   exportarVistoriaParaPDF,
-  exportarVistoriaParaDOCX,
 };
 
 export default VistoriaController;
