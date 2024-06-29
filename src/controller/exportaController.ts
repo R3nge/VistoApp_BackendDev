@@ -269,27 +269,31 @@ async function criarBodyPDF(
       for (const componente of comodo.componente) {
         if (componente.fotos && componente.fotos.length > 0) {
           for (const foto of componente.fotos) {
-            // Converta a string Base64 para um buffer de imagem
-            const bufferFoto = Buffer.from(foto.base64, "base64");
+            try {
+              const bufferFoto = Buffer.from(foto.base64, "base64");
 
-            const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
-            const { width, height } = fotoEmbed.scale(0.5);
+              // Determine the appropriate embed method based on the image format (PNG, JPEG, etc.)
+              const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
+              const { width, height } = fotoEmbed.scale(0.5);
 
-            // Verifique se há espaço suficiente na página atual para a foto
-            if (yOffset - height < 50) {
-              // Cria uma nova página se não houver espaço suficiente
-              page = pdfDoc.addPage();
-              yOffset = page.getHeight() - 50; // 50 é uma margem de segurança
+              // Check if there's enough space on the current page for the image
+              if (yOffset - height < 50) {
+                page = pdfDoc.addPage();
+                yOffset = page.getHeight() - 50;
+              }
+
+              page.drawImage(fotoEmbed, {
+                x: 50,
+                y: yOffset - height,
+                width,
+                height,
+              });
+
+              yOffset -= height + 20;
+            } catch (error) {
+              console.error("Error embedding image:", error);
+              // Log the error here
             }
-
-            page.drawImage(fotoEmbed, {
-              x: 50,
-              y: yOffset - height,
-              width,
-              height,
-            });
-
-            yOffset -= height + 20; // Adicione espaço entre as fotos
           }
         }
       }
