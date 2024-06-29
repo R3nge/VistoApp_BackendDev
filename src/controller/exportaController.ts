@@ -214,7 +214,7 @@ async function criarBodyPDF(
           tiposComponentes.push(tipoText);
         }
 
-        const componenteText = ` ${tipoText}: ${componente.material}, ${componente.cor}, ${componente.estado}`;
+        const componenteText = `${tipoText}: ${componente.material}, ${componente.cor}, ${componente.estado}`;
 
         comodoText += ` ${tiposComponentes.join(", ")}`;
 
@@ -251,7 +251,7 @@ async function criarBodyPDF(
             try {
               const bufferFoto = Buffer.from(foto.base64, "base64");
               const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
-              const { width, height } = fotoEmbed.scale(0.1);
+              const { width, height } = fotoEmbed.scale(0.5); // Ajuste a escala conforme necessário
 
               if (yOffset - height < 50) {
                 page = pdfDoc.addPage();
