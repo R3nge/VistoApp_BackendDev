@@ -203,103 +203,47 @@ async function criarBodyPDF(
 
   for (const comodo of vistoria.imovel.comodo) {
     let comodoText = `${comodo.numero}. ${comodo.tipo}`;
-    const tiposComponentes: string[] = [];
 
     if (comodo.componente && comodo.componente.length > 0) {
-      let componentesText = "";
-      for (const componente of comodo.componente) {
-        const tipoText = `${componente.tipo}`;
+      let xPosition = 50; // Inicializa a posição x para as imagens
+      let maxYPosition = yOffset; // Mantém controle do maior Y alcançado para ajustar yOffset
 
-        if (!tiposComponentes.includes(tipoText)) {
-          tiposComponentes.push(tipoText);
-        }
-
-        const componenteText = ` ${tipoText}: ${componente.material}, ${componente.cor}, ${componente.estado}`;
-
-        componentesText += componenteText;
-
-        if (componente.obs) {
-          componentesText += ` OBS: ${componente.obs}`;
-        }
-      }
-
-      comodoText += ` ${tiposComponentes.join(", ")}`;
-      const fullText = `${comodoText} ${componentesText}`;
-
-      const textLines = breakTextIntoLines(fullText, fontSize, larguraMaxima);
-      const textHeight = textLines.length * lineHeight;
-      if (yOffset - textHeight < 50) {
-        page = pdfDoc.addPage();
-        yOffset = page.getHeight() - 50;
-      }
-
-      for (const line of textLines) {
-        const isBold = tiposComponentes.some((tipo) => line.includes(tipo));
-        page.drawText(line, {
-          x: 50,
-          y: yOffset,
-          size: fontSize,
-          font: isBold ? fonteCmodo : fonteComponente,
-          color: isBold
-            ? rgb(corTextoCmodo[0], corTextoCmodo[1], corTextoCmodo[2])
-            : rgb(
-                corTextoComponente[0],
-                corTextoComponente[1],
-                corTextoComponente[2]
-              ),
-        });
-        yOffset -= lineHeight;
-      }
-    }
-
-    if (comodo.componente) {
       for (const componente of comodo.componente) {
         if (componente.fotos && componente.fotos.length > 0) {
-          await desenharImagensComponente(
-            page,
-            pdfDoc,
-            componente.fotos,
-            yOffset
-          );
+          for (const foto of componente.fotos) {
+            try {
+              const bufferFoto = Buffer.from(foto.base64, "base64");
+              const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
+              const { width, height } = fotoEmbed.scale(0.2);
+
+              if (xPosition + width > larguraMaxima) {
+                // Verifica se a imagem cabe na linha atual
+                xPosition = 50; // Volta para o início da linha
+                yOffset -= maxYPosition + 20; // Atualiza o yOffset para a próxima linha
+              }
+
+              page.drawImage(fotoEmbed, {
+                x: xPosition,
+                y: yOffset - height,
+                width,
+                height,
+              });
+
+              xPosition += width + 20; // Incrementa x para a próxima imagem
+              maxYPosition = Math.max(maxYPosition, yOffset - height); // Atualiza o maxYPosition
+            } catch (error) {
+              console.error("Error embedding image:", error);
+              // Log the error here
+            }
+          }
         }
       }
+
+      yOffset -= maxYPosition + 20; // Atualiza o yOffset após adicionar todas as imagens do comodo
     }
   }
 }
 
-async function desenharImagensComponente(
-  page: any,
-  pdfDoc: PDFDocument,
-  fotos: {
-    base64: string;
-  }[],
-  yOffset: number
-) {
-  for (const foto of fotos) {
-    try {
-      const bufferFoto = Buffer.from(foto.base64, "base64");
-      const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
-      const { width, height } = fotoEmbed.scale(0.2);
-
-      if (yOffset - height < 50) {
-        page = pdfDoc.addPage();
-        yOffset = page.getHeight() - 50;
-      }
-
-      page.drawImage(fotoEmbed, {
-        x: 50,
-        y: yOffset - height,
-        width,
-        height,
-      });
-
-      yOffset -= height + 20;
-    } catch (error) {
-      console.error("Erro ao incorporar imagem:", error);
-      // Trate o erro aqui conforme necessário, por exemplo, registrando o erro
-    }
-  }
-}
 
 const corTextoCmodo: [number, number, number] = [0, 0, 0]; // Cor RGB para o texto do cômodo (por exemplo, azul)
 const corTextoComponente: [number, number, number] = [0, 0, 0]; // Cor RGB para o texto do componente (por exemplo, vermelho)
