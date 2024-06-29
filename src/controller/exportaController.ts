@@ -5,11 +5,12 @@ import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import prisma from "../../database/prisma";
 import { FotoComponente, TipoVistoria } from "@prisma/client";
+import fetch from "node-fetch"; // Importe o node-fetch para fazer requisições HTTP
 
 interface DadosVistoria {
   id: string;
   data: Date;
-  tipo: TipoVistoria;
+  tipo: string; // Corrigi para o tipo string, ajuste conforme necessário
   imovel: {
     rua: string;
     numero: number;
@@ -29,10 +30,9 @@ interface DadosVistoria {
         obs: string;
         fotos: {
           id: string;
-          componenteId: string;
-          base64: string;
+          base64: string; // Ajustado para base64 apenas
           mimetype: string;
-        }[]; // Adicione um campo para as fotos dos componentes
+        }[];
       }[];
     }[];
   };
@@ -260,8 +260,8 @@ async function criarBodyPDF(
         if (componente.fotos && componente.fotos.length > 0) {
           for (const foto of componente.fotos) {
             try {
-              const fotoBytes = await fetch(foto.base64).then((res) =>
-                res.arrayBuffer()
+              const fotoBytes = await fetch(foto.base64).then(
+                (res: { arrayBuffer: () => any }) => res.arrayBuffer()
               );
               const fotoEmbed = await pdfDoc.embedPng(fotoBytes);
               const fotoWidth = 100; // Ajuste conforme necessário
@@ -274,7 +274,7 @@ async function criarBodyPDF(
               });
               yOffset -= fotoHeight + 10; // Espaço entre as fotos
             } catch (error) {
-              console.error("Erro ao carregar imagem:", error);
+              console.error(`Erro ao carregar imagem para componente`, error);
             }
           }
         }
