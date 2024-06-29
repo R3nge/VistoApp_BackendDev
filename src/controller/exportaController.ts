@@ -203,10 +203,10 @@ async function criarBodyPDF(
 
   for (const comodo of vistoria.imovel.comodo) {
     let comodoText = `${comodo.numero}. ${comodo.tipo}`;
-
     const tiposComponentes: string[] = [];
 
     if (comodo.componente && comodo.componente.length > 0) {
+      let componentesText = "";
       for (const componente of comodo.componente) {
         const tipoText = `${componente.tipo}`;
 
@@ -214,65 +214,89 @@ async function criarBodyPDF(
           tiposComponentes.push(tipoText);
         }
 
-        const componenteText = `${tipoText}: ${componente.material}, ${componente.cor}, ${componente.estado}`;
+        const componenteText = ` ${tipoText}: ${componente.material}, ${componente.cor}, ${componente.estado}`;
 
-        comodoText += ` ${tiposComponentes.join(", ")}`;
+        componentesText += componenteText;
 
-        const fullText = `${comodoText} ${componenteText}`;
-
-        const textLines = breakTextIntoLines(fullText, fontSize, larguraMaxima);
-        const textHeight = textLines.length * lineHeight;
-
-        if (yOffset - textHeight < 50) {
-          page = pdfDoc.addPage();
-          yOffset = page.getHeight() - 50;
-        }
-
-        for (const line of textLines) {
-          const isBold = tiposComponentes.some((tipo) => line.includes(tipo));
-          page.drawText(line, {
-            x: 50,
-            y: yOffset,
-            size: fontSize,
-            font: isBold ? fonteCmodo : fonteComponente,
-            color: isBold
-              ? rgb(corTextoCmodo[0], corTextoCmodo[1], corTextoCmodo[2])
-              : rgb(
-                  corTextoComponente[0],
-                  corTextoComponente[1],
-                  corTextoComponente[2]
-                ),
-          });
-          yOffset -= lineHeight;
-        }
-
-        if (componente.fotos && componente.fotos.length > 0) {
-          for (const foto of componente.fotos) {
-            try {
-              const bufferFoto = Buffer.from(foto.base64, "base64");
-              const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
-              const { width, height } = fotoEmbed.scale(0.5); // Ajuste a escala conforme necessário
-
-              if (yOffset - height < 50) {
-                page = pdfDoc.addPage();
-                yOffset = page.getHeight() - 50;
-              }
-
-              page.drawImage(fotoEmbed, {
-                x: 50,
-                y: yOffset - height,
-                width,
-                height,
-              });
-
-              yOffset -= height + 20; // Ajuste conforme necessário
-            } catch (error) {
-              console.error("Erro ao incorporar imagem:", error);
-              // Log de erro aqui
-            }
-          }
+        if (componente.obs) {
+          componentesText += ` OBS: ${componente.obs}`;
         }
       }
+
+      comodoText += ` ${tiposComponentes.join(", ")}`;
+      const fullText = `${comodoText} ${componentesText}`;
+
+      const textLines = breakTextIntoLines(fullText, fontSize, larguraMaxima);
+      const textHeight = textLines.length * lineHeight;
+      if (yOffset - textHeight < 50) {
+        page = pdfDoc.addPage();
+        yOffset = page.getHeight() - 50;
+      }
+
+      for (const line of textLines) {
+        const isBold = tiposComponentes.some((tipo) => line.includes(tipo));
+        page.drawText(line, {
+          x: 50,
+          y: yOffset,
+          size: fontSize,
+          font: isBold ? fonteCmodo : fonteComponente,
+          color: isBold
+            ? rgb(corTextoCmodo[0], corTextoCmodo[1], corTextoCmodo[2])
+            : rgb(
+                corTextoComponente[0],
+                corTextoComponente[1],
+                corTextoComponente[2]
+              ),
+        });
+        yOffset -= lineHeight;
+      }
+    }
+
+    if (comodo.componente) {
+      for (const componente of comodo.componente) {
+        if (componente.fotos && componente.fotos.length > 0) {
+          await desenharImagensComponente(
+            page,
+            pdfDoc,
+            componente.fotos,
+            yOffset
+          );
+        }
+      }
+    }
+  }
+}
+
+async function desenharImagensComponente(
+  page: any,
+  pdfDoc: PDFDocument,
+  fotos: {
+    base64: string;
+  }[],
+  yOffset: number
+) {
+  for (const foto of fotos) {
+    try {
+      const bufferFoto = Buffer.from(foto.base64, "base64");
+      const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
+      const { width, height } = fotoEmbed.scale(0.2);
+
+      if (yOffset - height < 50) {
+        page = pdfDoc.addPage();
+        yOffset = page.getHeight() - 50;
+      }
+
+      page.drawImage(fotoEmbed, {
+        x: 50,
+        y: yOffset - height,
+        width,
+        height,
+      });
+
+      yOffset -= height + 20;
+    } catch (error) {
+      console.error("Erro ao incorporar imagem:", error);
+      // Trate o erro aqui conforme necessário, por exemplo, registrando o erro
     }
   }
 }
