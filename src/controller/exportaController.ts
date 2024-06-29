@@ -190,13 +190,13 @@ async function criarBodyPDF(
   page: any,
   pdfDoc: PDFDocument,
   vistoria: DadosVistoria,
-  corTextoCmodo: [number, number, number], // Cor RGB para o texto do cômodo
-  corTextoComponente: [number, number, number], // Cor RGB para o texto do componente
-  fonteCmodo: any, // Fonte para o texto do cômodo
-  fonteComponente: any // Fonte para o texto do componente
+  corTextoCmodo: [number, number, number],
+  corTextoComponente: [number, number, number],
+  fonteCmodo: any,
+  fonteComponente: any
 ): Promise<void> {
   const fontSize = 12;
-  const larguraMaxima = page.getWidth() - 160; // Ajuste conforme necessário
+  const larguraMaxima = page.getWidth() - 160;
 
   let yOffset = page.getHeight() - 220;
   const lineHeight = 25;
@@ -204,79 +204,55 @@ async function criarBodyPDF(
   for (const comodo of vistoria.imovel.comodo) {
     let comodoText = `${comodo.numero}. ${comodo.tipo}`;
 
-    // Array para armazenar os tipos de componentes
     const tiposComponentes: string[] = [];
 
     if (comodo.componente && comodo.componente.length > 0) {
-      let componentesText = "";
       for (const componente of comodo.componente) {
         const tipoText = `${componente.tipo}`;
 
-        // Adiciona o tipo do componente ao array
         if (!tiposComponentes.includes(tipoText)) {
           tiposComponentes.push(tipoText);
         }
 
-        const componenteText = ` ${tipoText}: ${componente.material}, ${componente.cor} , ${componente.estado} `;
+        const componenteText = ` ${tipoText}: ${componente.material}, ${componente.cor}, ${componente.estado}`;
 
-        // Concatena o texto do componente na mesma linha
-        componentesText += componenteText;
+        comodoText += ` ${tiposComponentes.join(", ")}`;
 
-        if (componente.obs) {
-          // Adiciona a observação na mesma linha
-          componentesText += ` OBS: ${componente.obs}`;
+        const fullText = `${comodoText} ${componenteText}`;
+
+        const textLines = breakTextIntoLines(fullText, fontSize, larguraMaxima);
+        const textHeight = textLines.length * lineHeight;
+
+        if (yOffset - textHeight < 50) {
+          page = pdfDoc.addPage();
+          yOffset = page.getHeight() - 50;
         }
-      }
 
-      // Adiciona os tipos de componentes ao texto do cômodo
-      comodoText += ` ${tiposComponentes.join(", ")}`;
+        for (const line of textLines) {
+          const isBold = tiposComponentes.some((tipo) => line.includes(tipo));
+          page.drawText(line, {
+            x: 50,
+            y: yOffset,
+            size: fontSize,
+            font: isBold ? fonteCmodo : fonteComponente,
+            color: isBold
+              ? rgb(corTextoCmodo[0], corTextoCmodo[1], corTextoCmodo[2])
+              : rgb(
+                  corTextoComponente[0],
+                  corTextoComponente[1],
+                  corTextoComponente[2]
+                ),
+          });
+          yOffset -= lineHeight;
+        }
 
-      // Adiciona o texto do cômodo e dos componentes em uma única linha
-      const fullText = `${comodoText} ${componentesText}`;
-
-      // Verifica se há espaço suficiente na página atual
-      const textLines = breakTextIntoLines(fullText, fontSize, larguraMaxima);
-      const textHeight = textLines.length * lineHeight;
-      if (yOffset - textHeight < 50) {
-        // 50 é uma margem de segurança
-        // Cria uma nova página
-        page = pdfDoc.addPage();
-        yOffset = page.getHeight() - 50; // 50 é uma margem de segurança
-      }
-
-      // Adiciona o texto à página
-      for (const line of textLines) {
-        // Verifica se a linha está em negrito
-        const isBold = tiposComponentes.some((tipo) => line.includes(tipo));
-        page.drawText(line, {
-          x: 50, // Ajuste a posição conforme necessário
-          y: yOffset,
-          size: fontSize,
-          font: isBold ? fonteCmodo : fonteComponente,
-          color: isBold
-            ? rgb(corTextoCmodo[0], corTextoCmodo[1], corTextoCmodo[2])
-            : rgb(
-                corTextoComponente[0],
-                corTextoComponente[1],
-                corTextoComponente[2]
-              ),
-        });
-        yOffset -= lineHeight;
-      }
-    }
-
-    if (comodo.componente) {
-      for (const componente of comodo.componente) {
         if (componente.fotos && componente.fotos.length > 0) {
           for (const foto of componente.fotos) {
             try {
               const bufferFoto = Buffer.from(foto.base64, "base64");
-
-              // Determine the appropriate embed method based on the image format (PNG, JPEG, etc.)
               const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
               const { width, height } = fotoEmbed.scale(0.1);
 
-              // Check if there's enough space on the current page for the image
               if (yOffset - height < 50) {
                 page = pdfDoc.addPage();
                 yOffset = page.getHeight() - 50;
@@ -289,10 +265,10 @@ async function criarBodyPDF(
                 height,
               });
 
-              yOffset -= height + 20;
+              yOffset -= height + 20; // Ajuste conforme necessário
             } catch (error) {
-              console.error("Error embedding image:", error);
-              // Log the error here
+              console.error("Erro ao incorporar imagem:", error);
+              // Log de erro aqui
             }
           }
         }
