@@ -4,9 +4,11 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import fs from "fs/promises";
 import path from "path";
 import { ZodError } from "zod";
-import { RolePessoa } from "@prisma/client";
+import { Prisma, RolePessoa } from "@prisma/client";
 import { parse } from "date-fns";
 import bcrypt from "bcrypt";
+import multer from "multer";
+import { v4 as uuidv4 } from "uuid";
 
 // Enum para Códigos de Status HTTP
 const HttpStatus = {
@@ -37,16 +39,15 @@ interface Pessoa {
   firstName: string;
   middleName: string;
   lastName: string;
-  email?: string | null;  // email é opcional e pode ser nulo
-  password?: string | null;  // password é opcional e pode ser nulo
+  email?: string | null; // email é opcional e pode ser nulo
+  password?: string | null; // password é opcional e pode ser nulo
   tel: string;
   endereco: EnderecoPessoa;
   enderecoId: string;
   type: RolePessoa;
   birthDate: Date;
-  fotos?: string | null;  // fotos é opcional e pode ser nulo
+  fotos?: string | null; // fotos é opcional e pode ser nulo
 }
-
 
 // Função para gerar um número aleatório
 function gerarNumeroAleatorio(): number {
@@ -71,6 +72,94 @@ function formatarTelefone(telefone: string) {
 
   return numeroFormatado;
 }
+
+const upload = multer(); // Mantém a mesma configuração para upload de arquivos
+
+// Função para fazer upload de fotos para Pessoa
+export const uploadFotoPessoa = async (req: Request, res: Response) => {
+  try {
+    const { pessoaId } = req.params;
+
+    console.log("Iniciando upload de fotos para Pessoa...");
+    console.log("ID da Pessoa:", pessoaId);
+
+    if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+      console.log("Nenhum arquivo foi enviado.");
+      return res.status(400).send("Nenhum arquivo foi enviado.");
+    }
+
+    const files = req.files as Express.Multer.File[];
+    console.log("Número de arquivos recebidos:", files.length);
+
+    // Verifica se a Pessoa existe
+    const existingPessoa = await prisma.pessoa.findUnique({
+      where: { id: pessoaId },
+    });
+
+    if (!existingPessoa) {
+      console.log("Pessoa não encontrada.");
+      return res.status(404).send("Pessoa não encontrada.");
+    }
+
+    const fotoRecords: Prisma.FotoPessoaCreateManyInput[] = files.map(
+      (file) => ({
+        id: uuidv4(),
+        base64: file.buffer.toString("base64"),
+        mimetype: file.mimetype,
+        pessoaId: pessoaId, // Adicionando o pessoaId aqui
+      })
+    );
+
+    // Cria as novas fotos para a Pessoa
+    const fotosCriadas = await prisma.fotoPessoa.createMany({
+      data: fotoRecords,
+    });
+
+    console.log("Fotos criadas com sucesso:", fotosCriadas);
+
+    res
+      .status(200)
+      .json({ fotosCriadas, message: "Arquivos carregados com sucesso." });
+  } catch (error) {
+    console.error("Erro durante o processamento dos arquivos:", error);
+    res.status(500).send("Erro interno do servidor.");
+  }
+};
+
+export const getFotosPessoa = async (req: Request, res: Response) => {
+  const { pessoaId } = req.params;
+
+  console.log("Buscando fotos para a Pessoa ID:", pessoaId);
+
+  try {
+    // Busca a Pessoa pelo ID junto com suas fotos associadas
+    const pessoa = await prisma.pessoa.findUnique({
+      where: { id: pessoaId },
+      include: {
+        FotoPessoa: true, // Inclui todas as fotos associadas à Pessoa
+      },
+    });
+
+    if (!pessoa) {
+      console.log("Pessoa não encontrada.");
+      return res.status(404).json({ message: "Pessoa não encontrada." });
+    }
+
+    console.log("Fotos encontradas para a Pessoa:", pessoa.FotoPessoa);
+
+    // Retorna apenas os dados necessários para exibir no front-end
+    const fotosParaExibir = pessoa.FotoPessoa.map((foto) => ({
+      id: foto.id,
+      base64: foto.base64,
+      mimetype: foto.mimetype,
+    }));
+
+    res.status(200).json(fotosParaExibir);
+  } catch (error) {
+    console.error("Erro ao obter fotos da Pessoa:", error);
+    res.status(500).send("Erro interno do servidor.");
+  }
+};
 export const criarPessoaComEndereco = async (req: Request, res: Response) => {
   try {
     const {
@@ -318,7 +407,9 @@ export const buscarPessoaPorId = async (req: Request, res: Response) => {
   // Verifica se o ID foi fornecido
   if (!id) {
     console.log("ID não fornecido"); // Log para casos onde o ID não é fornecido
-    return res.status(HttpStatus.RequisicaoInvalida).json({ mensagem: "ID é necessário" });
+    return res
+      .status(HttpStatus.RequisicaoInvalida)
+      .json({ mensagem: "ID é necessário" });
   }
 
   try {
@@ -333,23 +424,36 @@ export const buscarPessoaPorId = async (req: Request, res: Response) => {
     // Verifica se a pessoa foi encontrada
     if (!pessoa) {
       console.log("Pessoa não encontrada com o ID:", id); // Log para casos onde a pessoa não é encontrada
-      return res.status(HttpStatus.NaoEncontrado).json({ mensagem: "Pessoa não encontrada" });
+      return res
+        .status(HttpStatus.NaoEncontrado)
+        .json({ mensagem: "Pessoa não encontrada" });
     }
 
     // Lista dos tipos permitidos
-    const tiposPermitidos: (keyof typeof RolePessoa)[] = ["Inquilino", "Proprietario", "Vistoriador"];
-    
+    const tiposPermitidos: (keyof typeof RolePessoa)[] = [
+      "Inquilino",
+      "Proprietario",
+      "Vistoriador",
+    ];
+
     // Verifica se o tipo da pessoa está na lista dos tipos permitidos
     if (!tiposPermitidos.includes(pessoa.type as keyof typeof RolePessoa)) {
       console.log("Tipo de pessoa não permitido:", pessoa.type); // Log para tipos de pessoa não permitidos
-      return res.status(HttpStatus.RequisicaoInvalida).json({ mensagem: "Tipo de pessoa não é Vistoriador, Inquilino ou Proprietário" });
+      return res
+        .status(HttpStatus.RequisicaoInvalida)
+        .json({
+          mensagem:
+            "Tipo de pessoa não é Vistoriador, Inquilino ou Proprietário",
+        });
     }
 
     // Retorna a pessoa encontrada
     return res.status(HttpStatus.Sucesso).json(pessoa);
   } catch (error) {
     console.error("Erro ao buscar pessoa por ID", error);
-    return res.status(HttpStatus.ErroInternoServidor).json({ mensagem: "Erro interno do servidor" });
+    return res
+      .status(HttpStatus.ErroInternoServidor)
+      .json({ mensagem: "Erro interno do servidor" });
   } finally {
     await prisma.$disconnect();
   }

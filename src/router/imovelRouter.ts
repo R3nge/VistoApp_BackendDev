@@ -1,8 +1,22 @@
 import { Router } from "express";
 import { ImovelController } from "../controller";
+import {
+  getFotosImovel,
+  uploadFotoImovel,
+} from "../controller/ImovelController";
+import multer from "multer";
 // import { validarCriarImovel } from "../schemas/imovelSchema"; // Substitua com o caminho correto
 
 const router = Router();
+const upload = multer();
+
+// Rota para upload de fotos para Imóvel
+router.put("/uploadFotoImovel/:imovelId", upload.any(), uploadFotoImovel);
+
+// Rota para buscar as fotos de um Imóvel
+router.get("/getFotosImovel/:imovelId", async (req, res) => {
+  return getFotosImovel(req, res);
+});
 
 router.post("/imovel/criar", async (req, res) => {
   ImovelController.criarImovel(req, res);

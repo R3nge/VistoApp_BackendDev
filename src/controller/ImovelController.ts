@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "../../database/prisma";
 import { ZodError } from "zod";
-import { RolePessoa, TipoImovel } from "@prisma/client";
+import { Prisma, RolePessoa, TipoImovel } from "@prisma/client";
 import { Tipo_Imovel } from "../Models/Models";
+import multer from "multer";
+import { v4 as uuidv4 } from "uuid";
 
 const HttpStatus = {
   Success: 200,
@@ -29,6 +31,93 @@ const gerarIdUnico = async (): Promise<string> => {
     return gerarIdUnico();
   } else {
     return id;
+  }
+};
+
+const upload = multer(); // Mantém a mesma configuração para upload de arquivos
+
+// Função para fazer upload de fotos para Imóvel
+export const uploadFotoImovel = async (req: Request, res: Response) => {
+  try {
+    const { imovelId } = req.params;
+
+    console.log("Iniciando upload de fotos para Imóvel...");
+    console.log("ID do Imóvel:", imovelId);
+
+    if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+      console.log("Nenhum arquivo foi enviado.");
+      return res.status(400).send("Nenhum arquivo foi enviado.");
+    }
+
+    const files = req.files as Express.Multer.File[];
+    console.log("Número de arquivos recebidos:", files.length);
+
+    // Verifica se o Imóvel existe
+    const existingImovel = await prisma.imovel.findUnique({
+      where: { id: imovelId },
+    });
+
+    if (!existingImovel) {
+      console.log("Imóvel não encontrado.");
+      return res.status(404).send("Imóvel não encontrado.");
+    }
+
+    const fotoRecords: Prisma.FotoImovelCreateManyInput[] = files.map(
+      (file) => ({
+        id: uuidv4(),
+        base64: file.buffer.toString("base64"),
+        mimetype: file.mimetype,
+        imovelId: imovelId, // Adicionando o imovelId aqui
+      })
+    );
+
+    // Cria as novas fotos para o Imóvel
+    const fotosCriadas = await prisma.fotoImovel.createMany({
+      data: fotoRecords,
+    });
+
+    console.log("Fotos criadas com sucesso:", fotosCriadas);
+
+    res
+      .status(200)
+      .json({ fotosCriadas, message: "Arquivos carregados com sucesso." });
+  } catch (error) {
+    console.error("Erro durante o processamento dos arquivos:", error);
+    res.status(500).send("Erro interno do servidor.");
+  }
+};
+export const getFotosImovel = async (req: Request, res: Response) => {
+  const { imovelId } = req.params;
+
+  console.log("Buscando fotos para o Imóvel ID:", imovelId);
+
+  try {
+    // Busca o Imóvel pelo ID junto com suas fotos associadas
+    const imovel = await prisma.imovel.findUnique({
+      where: { id: imovelId },
+      include: {
+        FotoImovel: true, // Inclui todas as fotos associadas ao Imóvel
+      },
+    });
+
+    if (!imovel) {
+      console.log("Imóvel não encontrado.");
+      return res.status(404).json({ message: "Imóvel não encontrado." });
+    }
+
+    console.log("Fotos encontradas para o Imóvel:", imovel.FotoImovel);
+
+    // Retorna apenas os dados necessários para exibir no front-end
+    const fotosParaExibir = imovel.FotoImovel.map((foto) => ({
+      id: foto.id,
+      base64: foto.base64,
+      mimetype: foto.mimetype,
+    }));
+
+    res.status(200).json(fotosParaExibir);
+  } catch (error) {
+    console.error("Erro ao obter fotos do Imóvel:", error);
+    res.status(500).send("Erro interno do servidor.");
   }
 };
 

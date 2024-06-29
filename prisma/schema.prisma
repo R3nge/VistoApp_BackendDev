@@ -30,6 +30,14 @@ model Pessoa {
   @@index([enderecoId])
 }
 
+model FotoPessoa {
+  id       String @id @unique @default(uuid())
+  pessoa   Pessoa @relation(fields: [pessoaId], references: [id])
+  pessoaId String
+  base64   String // Armazenando a imagem como base64
+  mimetype String // Armazenando o tipo do arquivo (image/jpeg, image/png, etc)
+}
+
 model EnderecoPessoa {
   id          String   @id @unique @default(uuid())
   rua         String
@@ -71,6 +79,14 @@ model Imovel {
   FotoImovel  FotoImovel[]
 }
 
+model FotoImovel {
+  id       String @id @default(uuid())
+  imovel   Imovel @relation(fields: [imovelId], references: [id])
+  imovelId String
+  base64   String // Armazenando a imagem como base64
+  mimetype String // Armazenando o tipo do arquivo (image/jpeg, image/png, etc)
+}
+
 model Aluga {
   id          String    @id @unique @default(uuid())
   inquilino   Pessoa    @relation(fields: [inquilinoId], references: [id])
@@ -89,23 +105,6 @@ model Comodo {
   numero     Int
   fotos      String? // Adicionado campo para URLs das fotos
   componente Componente[]
-}
-
-
-model FotoImovel {
-  id       String @id @unique @default(uuid())
-  imovel   Imovel @relation(fields: [imovelId], references: [id])
-  imovelId String
-  base64   String // Armazenando a imagem como base64
-  mimetype String // Armazenando o tipo do arquivo (image/jpeg, image/png, etc)
-}
-
-model FotoPessoa {
-  id       String @id @unique @default(uuid())
-  pessoa   Pessoa @relation(fields: [pessoaId], references: [id])
-  pessoaId String
-  base64   String // Armazenando a imagem como base64
-  mimetype String // Armazenando o tipo do arquivo (image/jpeg, image/png, etc)
 }
 
 model Componente {
