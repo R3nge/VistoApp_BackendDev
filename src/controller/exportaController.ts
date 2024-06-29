@@ -274,7 +274,7 @@ async function criarBodyPDF(
 
               // Determine the appropriate embed method based on the image format (PNG, JPEG, etc.)
               const fotoEmbed = await pdfDoc.embedPng(bufferFoto);
-              const { width, height } = fotoEmbed.scale(0.5);
+              const { width, height } = fotoEmbed.scale(0.2);
 
               // Check if there's enough space on the current page for the image
               if (yOffset - height < 50) {
