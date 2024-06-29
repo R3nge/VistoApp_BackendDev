@@ -275,8 +275,47 @@ async function criarBodyPDF(
               yOffset -= fotoHeight + 10; // Espaço entre as fotos
             } catch (error) {
               console.error(`Erro ao carregar imagem para componente`, error);
+              // Caso haja erro ao carregar a imagem, adicione uma imagem genérica
+              const genericImagePath = path.join(
+                __dirname,
+                "..",
+                "..",
+                "images",
+                "SemComponente.png"
+              );
+              const genericImage = await fs.readFile(genericImagePath);
+              const genericImageEmbed = await pdfDoc.embedPng(genericImage);
+              const fotoWidth = 100; // Ajuste conforme necessário
+              const fotoHeight = 100; // Ajuste conforme necessário
+              page.drawImage(genericImageEmbed, {
+                x: 400,
+                y: yOffset,
+                width: fotoWidth,
+                height: fotoHeight,
+              });
+              yOffset -= fotoHeight + 10; // Espaço entre as fotos
             }
           }
+        } else {
+          // Caso não haja fotos, adicione uma imagem genérica
+          const genericImagePath = path.join(
+            __dirname,
+            "..",
+            "..",
+            "images",
+            "SemComponente.png"
+          );
+          const genericImage = await fs.readFile(genericImagePath);
+          const genericImageEmbed = await pdfDoc.embedPng(genericImage);
+          const fotoWidth = 100; // Ajuste conforme necessário
+          const fotoHeight = 100; // Ajuste conforme necessário
+          page.drawImage(genericImageEmbed, {
+            x: 400,
+            y: yOffset,
+            width: fotoWidth,
+            height: fotoHeight,
+          });
+          yOffset -= fotoHeight + 10; // Espaço entre as fotos
         }
       }
     }
