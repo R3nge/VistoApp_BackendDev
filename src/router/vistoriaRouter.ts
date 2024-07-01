@@ -1,9 +1,14 @@
 import { Router } from "express";
-import VistoriaController from "../controller/VistoriaController";
+import VistoriaController, {
+  getFotosVistoria,
+  uploadFotoVistoria,
+} from "../controller/VistoriaController";
+import multer from "multer";
 
 const router = Router();
 
 // vistoriaRoutes.ts
+const upload = multer();
 
 router.post(
   "/Vistoria/CreateVistoria/:imovelId/:usuarioId",
@@ -32,5 +37,9 @@ router.get("/Vistoria/PegarVistoria/:id", async (req, res) => {
 router.get("/Vistoria/PegarVistoriaC/:id", async (req, res) => {
   VistoriaController.pegarVistoriaCompleta(req, res);
 });
+
+router.put("/uploadFotoVistoria/:vistoriaId", upload.any(), uploadFotoVistoria);
+
+router.get("/getFotosVistoria/:vistoriaId", getFotosVistoria);
 
 export default router;

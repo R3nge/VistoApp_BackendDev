@@ -148,6 +148,15 @@ model Vistoria {
   imovelId      String
   data          DateTime     @default(now())
   componente    Componente[]
+  fotos         FotoVistoria[] // Relacionamento com o modelo Foto  
+}
+
+model FotoVistoria {
+  id           String     @id @default(uuid())
+  vistoria   Vistoria @relation(fields: [vistoriaId], references: [id])
+  vistoriaId String
+  base64       String // Armazenando a imagem como base64
+  mimetype     String // Armazenando o tipo do arquivo (image/jpeg, image/png, etc)
 }
 
 enum TipoVistoria {

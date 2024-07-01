@@ -5,7 +5,8 @@ import { Request, Response } from "express";
 import prisma from "../../database/prisma";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { TipoVistoria } from "@prisma/client";
+import { Prisma, TipoVistoria } from "@prisma/client";
+import multer from "multer";
 
 interface DadosVistoria {
   id: string;
@@ -48,6 +49,93 @@ const HttpStatus = {
 const gerarIdUnico = (): string => {
   return `Vistoria${uuidv4().substr(0, 4)}`;
 };
+
+// Configuração do Multer para upload
+
+// Função para fazer upload de fotos da vistoria
+export const uploadFotoVistoria = async (req: Request, res: Response) => {
+  try {
+    const { vistoriaId } = req.params;
+
+    console.log("Iniciando upload de fotos...");
+    console.log("ID da Vistoria:", vistoriaId);
+
+    if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+      console.log("Nenhum arquivo foi enviado.");
+      return res.status(400).send("Nenhum arquivo foi enviado.");
+    }
+
+    const files = req.files as Express.Multer.File[];
+    console.log("Número de arquivos recebidos:", files.length);
+
+    // Verifica se a vistoria existe
+    const existingVistoria = await prisma.vistoria.findUnique({
+      where: { id: vistoriaId },
+    });
+
+    if (!existingVistoria) {
+      console.log("Vistoria não encontrada.");
+      return res.status(404).send("Vistoria não encontrada.");
+    }
+
+    const fotoRecords: Prisma.FotoVistoriaCreateManyInput[] = files.map(
+      (file) => ({
+        id: uuidv4(),
+        base64: file.buffer.toString("base64"),
+        mimetype: file.mimetype,
+        vistoriaId: vistoriaId,
+      })
+    );
+
+    // Cria as novas fotos para a vistoria
+    const fotosCriadas = await prisma.fotoVistoria.createMany({
+      data: fotoRecords,
+    });
+
+    console.log("Fotos criadas com sucesso:", fotosCriadas);
+
+    res.status(200).json({ fotosCriadas, message: "Arquivos carregados com sucesso." });
+  } catch (error) {
+    console.error("Erro durante o processamento dos arquivos:", error);
+    res.status(500).send("Erro interno do servidor.");
+  }
+};
+
+// Função para buscar as fotos de uma vistoria
+export const getFotosVistoria = async (req: Request, res: Response) => {
+  const { vistoriaId } = req.params;
+
+  console.log("Buscando fotos para a vistoria ID:", vistoriaId);
+
+  try {
+    // Busca a vistoria pelo ID junto com suas fotos associadas
+    const vistoria = await prisma.vistoria.findUnique({
+      where: { id: vistoriaId },
+      include: {
+        fotos: true, // Inclui todas as fotos associadas à vistoria
+      },
+    });
+
+    if (!vistoria) {
+      console.log("Vistoria não encontrada.");
+      return res.status(404).json({ message: "Vistoria não encontrada." });
+    }
+
+    console.log("Fotos encontradas para a vistoria:", vistoria.fotos);
+    // Retorna apenas os dados necessários para exibir no front-end
+    const fotosParaExibir = vistoria.fotos.map((foto) => ({
+      id: foto.id,
+      base64: foto.base64,
+      mimetype: foto.mimetype,
+    }));
+
+    res.status(200).json(fotosParaExibir);
+  } catch (error) {
+    console.error("Erro ao obter fotos da vistoria:", error);
+    res.status(500).send("Erro interno do servidor.");
+  }
+};
+
 
 export const criarVistoria = async (req: Request, res: Response) => {
   try {
